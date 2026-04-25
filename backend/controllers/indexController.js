@@ -58,20 +58,17 @@ function verifyToken(req, res, next) {
 }
 
 const validateUser = [
-    body("email").isEmail().withMessage("Invalid email address. Please try again."),
-    body("password").trim().isLength({min: 6, max: 25}).withMessage("Password should be atleast 6 characters long"),
-    body("username").trim()
-    .isLength({min: 6}).withMessage(`Username must be atleast 6 characters long`)
-    .isLength({max: 15}).withMessage(`Username should not exceed 15 characters`)
+    body("password").trim().isLength({min: 6, max: 25}).withMessage("Password should be atleast 8 characters long"),
+    body("email")
     .custom(async (value) => {
         const user = await prisma.users.findUnique({
             where: {
-                username: value
+                email: value
             }
         })
 
         if(user) {
-            throw new Error("Username already in use");
+            throw new Error("Email already in use");
         }
     })
 ]
@@ -91,7 +88,7 @@ let signUpPagePost = [
 
             await prisma.users.createMany({
                 data: [
-                    {username: req.body.username, email: req.body.email, password: hashedPassword}
+                    {fullname: req.body.fullname, email: req.body.email, password: hashedPassword}
                 ]
             })
 
