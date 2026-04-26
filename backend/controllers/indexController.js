@@ -6,13 +6,13 @@ const prisma = require("../lib/prisma.js");
 
 async function logInPost(req, res) {
     try {
-        const { username, password } = req.body;
+        const { email, password } = req.body;
         
         let token = null; 
 
-        if (username && password) {
+        if (email && password) {
             const user = await prisma.users.findUnique({
-                where: { username: username }
+                where: { email: email }
             });
 
             if (!user) {
@@ -22,8 +22,8 @@ async function logInPost(req, res) {
             let match = await bcrypt.compare(password, user.password);
             
             if (match) {
-                token = jwt.sign({ username: user.username, role: user.role }, process.env.SECRET_KEY, { expiresIn: '7d' });
-                return res.json({ token, username: user.username, role: user.role });
+                token = jwt.sign({ fullname: user.fullname }, process.env.SECRET_KEY, { expiresIn: '7d' });
+                return res.json({ token, fullname: user.fullname});
             } else {
                 return res.status(401).json({ message: "Invalid password" });
             }
