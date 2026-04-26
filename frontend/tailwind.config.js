@@ -55,10 +55,20 @@ export default {
       fadeUp: {
         '0%': {opacity: '0', transform: 'translateY(20px)'},
         '100%': {opacity: '1', transform: 'translateY(0)'},
+      },
+      fadeDown: {
+        '0%': { opacity: '0', transform: 'translateY(-20px)' },
+        '100%': { opacity: '1', transform: 'translateY(0)' },
+      },
+      fadeOut: {
+        '0%': { opacity: '1', transform: 'translateY(0)' },
+        '100%': { opacity: '0', transform: 'translateY(-20px)' },
       }
     },
     animation: {
-      'fade-up': 'fadeUp 0.5s ease-out forwards'
+      'fade-up': 'fadeUp 0.5s ease-out forwards',
+      'fade-down': 'fadeDown 0.5s ease-out forwards',
+      'fade-out': 'fadeOut 0.5s ease-in forwards',
     }
   },
   plugins: [require("tailwindcss-animate")],

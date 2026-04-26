@@ -11,7 +11,7 @@ function App() {
     if(savedUser) {
       return JSON.parse(savedUser);
     }
-    return { auth: false, name: '' }
+    return { auth: false, fullname: '' }
   });
 
   useEffect(() => {
@@ -35,10 +35,10 @@ function App() {
             element={user.auth ? <Navigate to="/profile" /> : <SignupForm />} 
           />
 
-          {/* Public Route: Chat Page */}
+          {/* Protected Route: Chat Page */}
           <Route 
             path="/" 
-            element={ <ChatPage user={user} setUser={setUser} />}  
+            element={user.auth ? <ChatPage user={user} setUser={setUser} /> : <LoginPage setUser={setUser} />}  
           />
 
         </Routes>
