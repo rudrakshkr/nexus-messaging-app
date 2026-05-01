@@ -1,4 +1,6 @@
 import Sidebar from "../components/Sidebar"
+import ChatHeader from "../components/ChatHeader"
+import ChatMessages from "../components/ChatMessages"
 
 export default function ChatPage({user, setUser}) {
     return (
@@ -6,8 +8,12 @@ export default function ChatPage({user, setUser}) {
             {/* Chat Sidebar  */}
             <Sidebar user={user} setUser={setUser} />
             {/* Chat section  */}
-            <section className="flex flex-[5]">
-                <p>This is a chat sectionnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn</p>
+            <section className="flex flex-col flex-[5] border-l border-[#2c2c2f]">
+                {/* CHAT HEADER  */}
+                <ChatHeader />
+                
+                {/* Chat Messages */}
+                <ChatMessages />
             </section>
         </main>
     )

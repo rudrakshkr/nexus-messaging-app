@@ -3,19 +3,23 @@ import { useState } from "react"
 export default function Sidebar({user, setUser}) {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     return (
-        <section className="flex flex-col flex-1 bg-[#18181b]">
-
-            <div className="flex m-3 mb-0">
-                <div className="w-9 h-9 bg-[#8444f6] rounded-md flex items-center justify-center text-white font-bold text-2xl mb-5 shadow-[0_0_30px_rgba(132,68,246,0.5)]">
+        <section className="flex flex-col flex-1 bg-[#161618] border-r border-[#2c2c2f]">
+            <div className="flex items-center gap-3 px-4 py-4">
+                <div className="w-8 h-8 bg-[#8444f6] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(132,68,246,0.4)] flex-shrink-0">
                     N
                 </div>
-                <h2 className="text-lg font-bold mt-1 pl-2">Nexus</h2>
+                <h2 className="text-lg font-bold text-[#e1e1e3] tracking-tight">Nexus</h2>
             </div>
 
-            {/* Filter people  */}
-            <div className="flex gap-2 m-3 text-[12px]">
-                <p className="border border-transparent py-1 px-3 rounded-xl cursor-default hover:bg-[#2c1f46] hover:text-[#671cfce4]">All</p>
-                <p className="border border-transparent py-1 px-3 rounded-xl cursor-default hover:bg-[#2c1f46] hover:text-[#671cfce4]">Unread</p>
+            {/* Filter Toggle */}
+            <div className="flex gap-2 px-4 pb-3 text-[13px] font-medium border-b border-[#2c2c2f]">
+                <button className="px-3 py-1.5 rounded-lg bg-[#8444f6]/15 text-[#b488f8] cursor-pointer transition-colors">
+                    All
+                </button>
+                
+                <button className="px-3 py-1.5 rounded-lg text-[#8f8f96] hover:bg-white/5 hover:text-[#e1e1e3] cursor-pointer transition-colors">
+                    Unread
+                </button>
             </div>
 
             <div className="flex flex-col w-full h-full max-h-screen overflow-hidden">
