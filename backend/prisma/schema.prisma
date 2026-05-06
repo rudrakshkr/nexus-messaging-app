@@ -12,9 +12,66 @@ datasource db {
   provider = "postgresql"
 }
 
+enum RoomType {
+  DIRECT // 1 on 1 chats
+  GROUP // Group chats
+}
+
+// Users Table
 model Users {
   id       Int    @id @default(autoincrement())
   fullname String @db.VarChar(255)
   email String @unique @db.VarChar(255)
+  avatar String?
   password String @db.VarChar(255)
+
+  // Relations
+  messages Message[]
+  rooms RoomParticipant[]
+  createdAt DateTime @default(now())
+}
+
+// Room Table
+model Room {
+  id Int    @id @default(autoincrement())
+  subject String?
+  type RoomType @default(DIRECT)
+
+  // Relations
+  participants RoomParticipant[]
+  messages Message[]
+  createdAt DateTime @default(now())
+}
+
+// Many-to-Many: Users <--> Rooms
+
+model RoomParticipant {
+  id Int    @id @default(autoincrement())
+  joinedAt DateTime @default(now())
+
+  // Relation to user
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  // Relation to room
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId Int
+
+  // A USER CAN BE IN THE SAME ROOM ONCE
+  @@unique([userId, roomId])
+}
+
+// Messages Table
+model Message {
+  id Int    @id @default(autoincrement())
+  text String @db.Text
+  createdAt DateTime @default(now())
+
+  // Relation to user
+  sender Users @relation(fields: [senderId], references: [id])
+  senderId Int
+
+  // Relation to room
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId Int
 }

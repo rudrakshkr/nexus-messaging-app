@@ -1,5 +1,6 @@
 require("dotenv").config({path: ".env"});
 const express = require("express");
+const http = require("http")
 const path = require("node:path");
 const cors = require("cors");
 const indexRouter = require("./routes/indexRouter.js");
@@ -9,12 +10,96 @@ const CustomNotFoundError = require('./errors/CustomNotFoundError.js');
 const prisma = require("./lib/prisma.js")
 
 const app = express();
-
+app.use(cors());
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 app.use(express.urlencoded({extended: true}));
 app.use(express.json());
-app.use(cors());
+
+const frontend_url = process.env.FRONTEND_URL || "http://localhost:5175"
+
+// Initialise socket connection
+const {Server} = require('socket.io');
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: frontend_url,  
+    methods: ["GET", "POST"]
+  },
+});
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  // Users joining room after their own room id
+  socket.on("setup", (myUserId) => {
+    socket.join(myUserId.toString());
+    console.log("User joined their personal socket room:", myUserId);
+  })
+
+  // Handle incoming live messages
+  socket.on("sendMessage", async (data) => {
+    const {text, senderMail, receiverId} = data;
+
+    try {
+      const sender = await prisma.users.findUnique({
+        where: {email: senderMail}
+      })
+
+      if(!sender) return;
+
+      // Find shared room
+      let sharedRoom = await prisma.room.findFirst({
+        where: {
+          type: 'DIRECT',
+          AND: [
+            { participants: {some: {userId: sender.id } } },
+            { participants: {some: {userId: receiverId } } }
+          ]
+        }
+      })
+
+      // If first ever message between both, then create room
+      if(!sharedRoom) {
+        sharedRoom = await prisma.room.create({
+          data: {
+            type: 'DIRECT',
+            participants: {
+              create: [
+                {userId: sender.id},
+                {userId: receiverId}
+              ]
+            }
+          }
+        })
+      }
+      // Save message to database
+      const savedMessage = await prisma.message.create({
+        data: {
+          text: text,
+          senderId: sender.id,
+          roomId: sharedRoom.id
+        }
+      });
+
+      const formattedMessage = {
+        id: savedMessage.id,
+        text: savedMessage.text,
+        senderEmail: senderMail,
+        avatar: sender.avatar,
+        time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+            hour: 'numeric', minute: '2-digit', hour12: true 
+        })
+      }
+
+      // Send it live to both receiver and back to sender
+      io.to(receiverId.toString()).to(sender.id.toString()).emit("receiveMessage", formattedMessage);
+
+    } catch(err) {
+      console.error("Error saving/sending message:", err);
+    }
+  })
+  socket.on("disconnect", () => console.log(`User disconnected: ${socket.id}`));
+})
 
 const assetsPath = path.join(__dirname, "public");
 app.use(express.static(assetsPath));
@@ -30,7 +115,7 @@ app.use((err, req, res, next) => {
   res.status(statusCode).send(`${err.name}: ${err.message}`);
 });
 
-app.listen(3000, (error) => {
+server.listen(3000, (error) => {
     if(error) {
         throw error;
     }

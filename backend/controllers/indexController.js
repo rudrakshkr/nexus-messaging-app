@@ -22,8 +22,8 @@ async function logInPost(req, res) {
             let match = await bcrypt.compare(password, user.password);
             
             if (match) {
-                token = jwt.sign({ fullname: user.fullname }, process.env.SECRET_KEY, { expiresIn: '7d' });
-                return res.json({ token, fullname: user.fullname});
+                token = jwt.sign({ email: user.email, id: user.id }, process.env.SECRET_KEY, { expiresIn: '7d' });
+                return res.json({ token, email: user.email, id: user.id});
             } else {
                 return res.status(401).json({ message: "Invalid password" });
             }
@@ -37,7 +37,7 @@ async function logInPost(req, res) {
 }
 
 function verifyToken(req, res, next) {
-    req.user = { username: null, verified: false };
+    req.user = { email: null, id: null, verified: false };
     const bearerHeader = req.headers['authorization'];
 
     if (typeof bearerHeader !== "undefined") {
@@ -49,7 +49,7 @@ function verifyToken(req, res, next) {
                 return res.sendStatus(403);
             }
             
-            req.user = { username: data.username, role: data.role, verified: true };
+            req.user = { email: data.email, id: data.id, verified: true };
             return next();
         });
     } else {
@@ -100,6 +100,84 @@ let signUpPagePost = [
     }
 ]
 
+async function usersGet(req, res, next) {
+    try {
+        const users = await prisma.users.findMany({
+            select: {
+                id: true,
+                fullname: true,
+                email: true,
+                avatar: true
+            }
+        });
+        
+        if(!users) {
+            return res.json({message: "Couldn't find user!"})
+        }
+
+        return res.json({users: users});
+    }
+    catch(err) {
+        console.error("Prisma Error: ", err);
+        return res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
+async function messagesGet(req, res, next) {
+    try {
+        const myUserId = parseInt(req.user.id);
+        const receiverId = parseInt(req.params.receiverId);
+
+        const sharedRoom = await prisma.room.findFirst({
+            where: {
+                type: 'DIRECT',
+                AND: [
+                    // Must contain logged in user id
+                    {participants: {some: {userId: myUserId } } },
+                    // And receiver id
+                    {participants: {some: {userId: receiverId } } }
+                ]
+            },
+            include: {
+                messages: {
+                    orderBy: {
+                        createdAt: 'asc'
+                    },
+                    include: {
+                        sender: {
+                            select: {
+                                email: true,
+                                fullname: true,
+                                avatar: true
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        if(!sharedRoom) {
+            return res.status(200).json([]);
+        }
+
+        const formattedMessages = sharedRoom.messages.map(msg => ({
+            id: msg.id,
+            text: msg.text,
+            senderEmail: msg.sender.email,
+            time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit', 
+                hour12: true 
+            })
+        }));
+
+        res.status(200).json(formattedMessages);
+    } catch(err) {
+        console.error("Error fetching chat history: ", err);
+        return res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
 function logout(req, res) {
     return res.sendStatus(200);
 }
@@ -108,5 +186,7 @@ module.exports = {
     logInPost,
     verifyToken,
     signUpPagePost,
+    messagesGet,
     logout,
+    usersGet
 }
