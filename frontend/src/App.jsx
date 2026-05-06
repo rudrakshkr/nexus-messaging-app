@@ -11,7 +11,7 @@ function App() {
     if(savedUser) {
       return JSON.parse(savedUser);
     }
-    return { auth: false, fullname: '' }
+    return { auth: false, email: '', id: null }
   });
 
   useEffect(() => {
@@ -26,13 +26,13 @@ function App() {
           {/* Public Route: Login */}
           <Route 
             path="/login" 
-            element={user.auth ? <Navigate to="/profile" /> : <LoginPage setUser={setUser} />} 
+            element={user.auth ? <Navigate to="/" /> : <LoginPage setUser={setUser} />} 
           />
           
           {/* Public Route: Sign Up */}
           <Route 
             path="/sign-up" 
-            element={user.auth ? <Navigate to="/profile" /> : <SignupForm />} 
+            element={user.auth ? <Navigate to="/" /> : <SignupForm />} 
           />
 
           {/* Protected Route: Chat Page */}
@@ -41,6 +41,11 @@ function App() {
             element={user.auth ? <ChatPage user={user} setUser={setUser} /> : <LoginPage setUser={setUser} />}  
           />
 
+          {/* Catch All  */}
+          <Route 
+            path="*" 
+            element={user.auth ? <Navigate to="/" /> : <SignupForm />} 
+          />
         </Routes>
       </div>
     </BrowserRouter>

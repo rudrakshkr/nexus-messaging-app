@@ -1,7 +1,50 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
-export default function Sidebar({user, setUser}) {
+export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
+    const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [users, setUsers] = useState([]);
+    const [loggedUser, setLoggedUser] = useState([]);
+
+    // Loading State
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Errors State
+    const [errors, setErrors] = useState("");
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const getUsers = await fetch(`/api/getUsers`, {
+                    method: 'GET',
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                })
+
+                if(!getUsers.ok) throw new Error("Failed to get post.");
+                const usersData = await getUsers.json();
+
+                // Get all users not including the one logged in
+                setUsers(usersData.users.filter((getUser) => getUser.email !== user.email))
+                // Set logged user state
+                setLoggedUser(usersData.users.filter((getUser) => getUser.email === user.email));
+            } catch(err) {
+                console.error("Fetch error: ", err);
+                setErrors("Failed to load page data.");
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchUsers();
+    }, [token]);
+
+    useEffect(() => {
+        if (users.length > 0) {
+        }
+    }, [users]);
+
     return (
         <section className="flex flex-col flex-1 bg-[#161618] border-r border-[#2c2c2f]">
             <div className="flex items-center gap-3 px-4 py-4">
@@ -25,37 +68,49 @@ export default function Sidebar({user, setUser}) {
             <div className="flex flex-col w-full h-full max-h-screen overflow-hidden">
                 {/* Contact Info Cards */}
                 <div className="flex-1 overflow-y-auto">
-                    <div className="flex items-center gap-3 p-3 w-full hover:bg-white/5 rounded-xl cursor-pointer transition-colors">
-                        <div className="relative flex-shrink-0">
-                            <img 
-                                src="https://i.pravatar.cc/150?u=sarah" 
-                                alt="Sarah Jenkins" 
-                                className="w-11 h-11 rounded-full object-cover"
-                            />
-                            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
-                        </div>
+                    {users.map((user) => {
+                        return (
+                            <div 
+                                className={`relative flex items-center gap-3 p-3 w-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden ${
+                                    activeUser?.id === user.id 
+                                        ? 'bg-[#2a2a2e] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[60%] before:w-1.5 before:bg-[#8444f6] before:rounded-r-md' 
+                                        : 'hover:bg-white/5'
+                                }`}
+                                key={user.id}
+                                onClick={() => onSelectUser(user)}
+                            >
+                                <div className="relative flex-shrink-0">
+                                    <img 
+                                        src={user.avatar} 
+                                        alt={user.fullname} 
+                                        className="w-11 h-11 rounded-full object-cover"
+                                    />
+                                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
+                                </div>
 
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                            <div className="flex justify-between items-baseline mb-0.5">
-                                <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate pr-2">
-                                    Sarah Jenkins
-                                </h3>
-                                <span className="text-xs text-[#8f8f96] flex-shrink-0">
-                                    10:42 AM
-                                </span>
-                            </div>
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                    <div className="flex justify-between items-baseline mb-0.5">
+                                        <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate pr-2">
+                                            {user.fullname}
+                                        </h3>
+                                        <span className="text-xs text-[#8f8f96] flex-shrink-0">
+                                            10:42 AM
+                                        </span>
+                                    </div>
 
-                            <div className="flex justify-between items-center">
-                                <p className="text-[13px] font-medium text-[#c0c0c8] truncate pr-4">
-                                    No rush, whenever you have time
-                                </p>
-                                {/* Notification Count */}
-                                <div className="w-5 h-5 bg-[#8444f6] rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-[0_2px_10px_rgba(132,68,246,0.3)]">
-                                    2
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-[13px] font-medium text-[#c0c0c8] truncate pr-4">
+                                            No rush, whenever you have time
+                                        </p>
+                                        {/* Notification Count */}
+                                        <div className="w-5 h-5 bg-[#8444f6] rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-[0_2px_10px_rgba(132,68,246,0.3)]">
+                                            2
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+                        )
+                    })}
                 </div>
 
                 {/* User Info Card  */}
@@ -99,27 +154,29 @@ export default function Sidebar({user, setUser}) {
                         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                         className="flex justify-between items-center gap-3 p-3 w-full hover:bg-white/5 cursor-pointer transition-colors"
                     >
-                        <div className="flex items-center gap-3 min-w-0">
-                            {/* Avatar  */}
-                            <div className="relative flex-shrink-0">
-                                <img 
-                                    src="https://i.pravatar.cc/150?u=sarah" 
-                                    alt="Alex Chen" 
-                                    className="w-10 h-10 rounded-full object-cover"
-                                />
-                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
-                            </div>
+                        {loggedUser.length !== 0 && (
+                            <div className="flex items-center gap-3 min-w-0">
+                                {/* Avatar  */}
+                                <div className="relative flex-shrink-0">
+                                    <img 
+                                        src={loggedUser[0].avatar}
+                                        alt="Alex Chen" 
+                                        className="w-10 h-10 rounded-full object-cover"
+                                    />
+                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
+                                </div>
 
-                            {/* Name and Status */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate">
-                                    Alex Chen
-                                </h3>
-                                <p className="text-[13px] font-medium text-[#8f8f96] truncate">
-                                    Working
-                                </p>
+                                {/* Name and Status */}
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                    <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate">
+                                        {loggedUser[0].fullname}
+                                    </h3>
+                                    <p className="text-[13px] font-medium text-[#8f8f96] truncate">
+                                        Working
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Dropdown Icon */}
                         <div className="flex-shrink-0 text-gray-500">

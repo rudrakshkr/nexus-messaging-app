@@ -1,18 +1,26 @@
-export default function ChatHeader() {
+export default function ChatHeader({activeUser}) {
     return (
         <div className="w-full flex items-center justify-between px-6 py-4 border-b border-[#2c2c2f] bg-[#0a0a0a]">
             <div className="flex items-center gap-4">
-                <div className="w-11 h-11 rounded-full bg-[#1e1e1e] flex items-center justify-center text-[#8f8f96]">
+                <div className="relative flex-shrink-0">
+                    <img 
+                        src={activeUser.avatar} 
+                        alt={activeUser.fullname} 
+                        className="w-11 h-11 rounded-full object-cover"
+                    />
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
+                </div>
+                {/* <div className="w-11 h-11 rounded-full bg-[#1e1e1e] flex items-center justify-center text-[#8f8f96]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="4" y1="9" x2="20" y2="9"></line>
                         <line x1="4" y1="15" x2="20" y2="15"></line>
                         <line x1="10" y1="3" x2="8" y2="21"></line>
                         <line x1="16" y1="3" x2="14" y2="21"></line>
                     </svg>
-                </div>
+                </div> */}
                 <div className="flex flex-col">
-                    <h2 className="text-[15px] font-semibold text-[#e1e1e3]">Design Team</h2>
-                    <p className="text-[13px] font-medium text-[#8f8f96] mt-0.5">2 members</p>
+                    <h2 className="text-[15px] font-semibold text-[#e1e1e3]">{activeUser.fullname}</h2>
+                    <p className="text-[13px] font-medium text-[#8f8f96] mt-0.5">Active now</p>
                 </div>
             </div>
 

@@ -1,6 +1,93 @@
-export default function ChatMessages() {
+import { useEffect, useState } from "react"
+import { io } from "socket.io-client";
+
+const backend_url = import.meta.VITE_API_BASE_URL || "http://localhost:3000"
+const socket = io(backend_url);
+
+export default function ChatMessages({receiver}) {
+    const token = localStorage.getItem("jwtToken");
+
+    const [messages, setMessages] = useState([]);
+    const [inputText, setInputText] = useState("");
+    const [errors, setErrors] = useState("");
+
+    // Get user identity
+    const storedData = localStorage.getItem("userData");
+    const myMail = storedData ? JSON.parse(storedData).email : null;
+    const myId = storedData ? JSON.parse(storedData).id : null;
+
+    // Tell socket server logged in user id
+    useEffect(() => {
+        if(myId) {
+            socket.emit("setup", myId);
+        }
+    })
+
+    // FETCH CHAT HISTORY
+    useEffect(() => {
+        if(!receiver) return;
+        setMessages([]);
+
+        const fetchMessageHistory = async () => {
+            try {
+                const res = await fetch(`/api/messages/${receiver.id}`, {
+                    method: 'GET',
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                if(res.ok) {
+                    const history = await res.json();
+                    setMessages(history);
+                }
+            } catch(err) {
+                console.error("Fetch error: ", err);
+                setErrors("Failed to load page data.");
+            }
+        };
+
+        fetchMessageHistory();
+    }, [receiver]);
+
+
+    // Handle LIVE Messages
+    useEffect(() => {
+        const handleIncomingMessage = (msg) => {
+            setMessages((prev) => [...prev, msg])
+            console.log(messages);
+        }
+
+        socket.on("receiveMessage", handleIncomingMessage);
+
+        return () => socket.off("receiveMessage", handleIncomingMessage);
+    }, []);
+
+
+    // Handle Sending
+    const sendMessage = () => {
+        if(!inputText.trim() || !receiver) return;
+
+        // Send text and email to sendMessage
+        socket.emit("sendMessage", {
+            text: inputText,
+            senderMail: myMail,
+            receiverId: receiver.id
+        });
+        setInputText("");
+    }
+
+    // Allow sending with enter key
+    const handleKeyDown = (e) => {
+        if(e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    }
+
     return (
         <>
+            {/* Chat Section  */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
                 <div className="flex justify-center">
                     <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[11px] font-medium px-3 py-1 rounded-full">
@@ -9,36 +96,60 @@ export default function ChatMessages() {
                 </div>
 
                 {/* CHAT MESSAGE BOX */}
-                <div className="flex gap-3 max-w-2xl">
-                    {/* Sender Avatar */}
-                    <img 
-                        src="https://i.pravatar.cc/150?u=design" 
-                        alt="Design Team" 
-                        className="w-8 h-8 rounded-full object-cover mt-1"
-                    />
-                    
-                    {/* Message Content */}
-                    <div className="flex flex-col gap-1">
-                        {/* Name & Time */}
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-[13px] font-semibold text-[#e1e1e3]">Design Team</span>
-                            <span className="text-[11px] text-[#8f8f96]">9:15 AM</span>
+                <div className="flex flex-col w-full gap-6">
+                {messages.map((msg, index) => {
+                    const isMyMessage = msg.senderEmail === myMail;
+                    return (
+                        <div 
+                            key={index} 
+                            className={`flex w-full ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                        >
+                            <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                
+                                {/* User avatar */}
+                                <img 
+                                    src={msg.avatar}
+                                    alt={isMyMessage ? "You" : receiver.fullname} 
+                                    className="w-8 h-8 rounded-full object-cover mt-1"
+                                />
+                                
+                                {/* Message Content */}
+                                <div className={`flex flex-col gap-1 ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                    {/* Name & Time */}
+                                    <div className={`flex items-baseline gap-2 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                        <span className="text-[13px] font-semibold text-[#e1e1e3]">
+                                            {isMyMessage ? 'You' : receiver.fullname}
+                                        </span>
+                                        <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                    </div>
+                                    
+                                    {/* Message Bubble */}
+                                    <div className={`p-3 w-fit ${
+                                        isMyMessage 
+                                            ? 'bg-[#8444f6] text-white rounded-2xl rounded-tr-sm' 
+                                            : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3] rounded-2xl rounded-tl-sm'
+                                    }`}>
+                                        <p className="text-[14px] mb-2">
+                                            {msg.text} 
+                                        </p>
+                                        
+                                        {/* Link Badge/Button */}
+                                        {!isMyMessage && (
+                                            <button className="bg-[#2563eb]/20 text-[#60a5fa] border border-[#3b82f6]/30 text-[10px] font-semibold px-2 py-0.5 rounded transition-colors hover:bg-[#2563eb]/30">
+                                                LINK
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                </div>
+                            </div>
                         </div>
-                        
-                        {/* Message */}
-                        <div className="bg-[#161618] border border-[#2c2c2f] p-3 rounded-2xl rounded-tl-sm w-fit">
-                            <p className="text-[14px] text-[#e1e1e3] mb-2">
-                                New assets are uploaded to Figma.
-                            </p>
-                            {/* Link Badge/Button */}
-                            <button className="bg-[#2563eb]/20 text-[#60a5fa] border border-[#3b82f6]/30 text-[10px] font-semibold px-2 py-0.5 rounded transition-colors hover:bg-[#2563eb]/30">
-                                LINK
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                    );
+                })}
             </div>
-
+            </div>
+            
+            {/* Input section  */}
             <div className="p-6 pt-2">
                 <div className="border-t border-[#2c2c2f] pt-4">
                     <div className="bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
@@ -52,7 +163,10 @@ export default function ChatMessages() {
                         {/* Text Input */}
                         <input 
                             type="text" 
-                            placeholder="Message Sarah..." 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={`Message ${receiver.fullname ? receiver.fullname.split(' ')[0] : '...'}`}
                             className="flex-1 bg-transparent border-none outline-none text-[#e1e1e3] text-[14px] placeholder-[#8f8f96] px-3"
                         />
 
@@ -79,7 +193,7 @@ export default function ChatMessages() {
                             </button>
                             
                             {/* Send Icon */}
-                            <button className="hover:text-[#8444f6] transition-colors">
+                            <button className="hover:text-[#8444f6] transition-colors" onClick={sendMessage}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="22" y1="2" x2="11" y2="13"></line>
                                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
