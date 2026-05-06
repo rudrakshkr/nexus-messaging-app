@@ -7,7 +7,7 @@ export default function ChatPage({user, setUser}) {
     const [selectedUser, setSelectedUser] = useState(null);
 
     return (
-        <main className="w-full min-h-screen flex bg-[#0f0f0f] text-white font-sans">
+        <main className="w-full h-screen overflow-hidden flex bg-[#0f0f0f] text-white font-sans">
             {/* Chat Sidebar  */}
             <Sidebar 
                 user={user} 

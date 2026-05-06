@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { io } from "socket.io-client";
 
 const backend_url = import.meta.VITE_API_BASE_URL || "http://localhost:3000"
@@ -11,6 +11,18 @@ export default function ChatMessages({receiver}) {
     const [inputText, setInputText] = useState("");
     const [errors, setErrors] = useState("");
 
+    // Create referance
+    const messagesEndRef = useRef(null);
+
+    // Scroll to bottom smoothly
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages])
+
     // Get user identity
     const storedData = localStorage.getItem("userData");
     const myMail = storedData ? JSON.parse(storedData).email : null;
@@ -18,10 +30,21 @@ export default function ChatMessages({receiver}) {
 
     // Tell socket server logged in user id
     useEffect(() => {
-        if(myId) {
+        if(!myId) return;
+        
+        const handleSetup = () => {
             socket.emit("setup", myId);
         }
-    })
+        if(socket.connected) {
+            handleSetup();
+        }
+
+        socket.on("connect", handleSetup);
+
+        return () => {
+            socket.off("connect", handleSetup);
+        }
+    }, [myId]);
 
     // FETCH CHAT HISTORY
     useEffect(() => {
@@ -55,7 +78,6 @@ export default function ChatMessages({receiver}) {
     useEffect(() => {
         const handleIncomingMessage = (msg) => {
             setMessages((prev) => [...prev, msg])
-            console.log(messages);
         }
 
         socket.on("receiveMessage", handleIncomingMessage);
@@ -86,9 +108,9 @@ export default function ChatMessages({receiver}) {
     }
 
     return (
-        <>
+        <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#0a0a0a]">
             {/* Chat Section  */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 min-h-0">
                 <div className="flex justify-center">
                     <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[11px] font-medium px-3 py-1 rounded-full">
                         Today
@@ -97,60 +119,61 @@ export default function ChatMessages({receiver}) {
 
                 {/* CHAT MESSAGE BOX */}
                 <div className="flex flex-col w-full gap-6">
-                {messages.map((msg, index) => {
-                    const isMyMessage = msg.senderEmail === myMail;
-                    return (
-                        <div 
-                            key={index} 
-                            className={`flex w-full ${isMyMessage ? 'justify-end' : 'justify-start'}`}
-                        >
-                            <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                
-                                {/* User avatar */}
-                                <img 
-                                    src={msg.avatar}
-                                    alt={isMyMessage ? "You" : receiver.fullname} 
-                                    className="w-8 h-8 rounded-full object-cover mt-1"
-                                />
-                                
-                                {/* Message Content */}
-                                <div className={`flex flex-col gap-1 ${isMyMessage ? 'items-end' : 'items-start'}`}>
-                                    {/* Name & Time */}
-                                    <div className={`flex items-baseline gap-2 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                        <span className="text-[13px] font-semibold text-[#e1e1e3]">
-                                            {isMyMessage ? 'You' : receiver.fullname}
-                                        </span>
-                                        <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
-                                    </div>
+                    {messages.map((msg, index) => {
+                        const isMyMessage = msg.senderEmail === myMail;
+                        return (
+                            <div 
+                                key={index} 
+                                className={`flex w-full ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                                     
-                                    {/* Message Bubble */}
-                                    <div className={`p-3 w-fit ${
-                                        isMyMessage 
-                                            ? 'bg-[#8444f6] text-white rounded-2xl rounded-tr-sm' 
-                                            : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3] rounded-2xl rounded-tl-sm'
-                                    }`}>
-                                        <p className="text-[14px] mb-2">
-                                            {msg.text} 
-                                        </p>
+                                    {/* User avatar */}
+                                    <img 
+                                        src={msg.avatar}
+                                        alt={isMyMessage ? "You" : receiver.fullname} 
+                                        className="w-8 h-8 rounded-full object-cover mt-1"
+                                    />
+                                    
+                                    {/* Message Content */}
+                                    <div className={`flex flex-col gap-1 ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                        {/* Name & Time */}
+                                        <div className={`flex items-baseline gap-2 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <span className="text-[13px] font-semibold text-[#e1e1e3]">
+                                                {isMyMessage ? 'You' : receiver.fullname}
+                                            </span>
+                                            <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                        </div>
                                         
-                                        {/* Link Badge/Button */}
-                                        {!isMyMessage && (
-                                            <button className="bg-[#2563eb]/20 text-[#60a5fa] border border-[#3b82f6]/30 text-[10px] font-semibold px-2 py-0.5 rounded transition-colors hover:bg-[#2563eb]/30">
-                                                LINK
-                                            </button>
-                                        )}
+                                        {/* Message Bubble */}
+                                        <div className={`p-3 w-fit ${
+                                            isMyMessage 
+                                                ? 'bg-[#8444f6] text-white rounded-2xl rounded-tr-sm' 
+                                                : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3] rounded-2xl rounded-tl-sm'
+                                        }`}>
+                                            <p className="text-[14px] mb-2">
+                                                {msg.text} 
+                                            </p>
+                                            
+                                            {/* Link Badge/Button */}
+                                            {!isMyMessage && (
+                                                <button className="bg-[#2563eb]/20 text-[#60a5fa] border border-[#3b82f6]/30 text-[10px] font-semibold px-2 py-0.5 rounded transition-colors hover:bg-[#2563eb]/30">
+                                                    LINK
+                                                </button>
+                                            )}
+                                        </div>
+                                        
                                     </div>
-                                    
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                    <div ref={messagesEndRef}/>
+                </div>
             </div>
             
             {/* Input section  */}
-            <div className="p-6 pt-2">
+            <div className="p-6 pt-2 shrink-0">
                 <div className="border-t border-[#2c2c2f] pt-4">
                     <div className="bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
                         {/* Attachment Icon */}
@@ -211,6 +234,6 @@ export default function ChatMessages({receiver}) {
 
                 </div>
             </div>
-        </>
+        </div>
     )
 }
