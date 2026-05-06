@@ -164,6 +164,7 @@ async function messagesGet(req, res, next) {
             id: msg.id,
             text: msg.text,
             senderEmail: msg.sender.email,
+            avatar: msg.sender.avatar,
             time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', 
                 minute: '2-digit', 
