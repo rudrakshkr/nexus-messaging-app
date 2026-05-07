@@ -38,7 +38,7 @@ io.on("connection", (socket) => {
 
   // Handle incoming live messages
   socket.on("sendMessage", async (data) => {
-    const {text, senderMail, receiverId} = data;
+    const {text, senderMail, receiverId, tempId} = data;
 
     try {
       const sender = await prisma.users.findUnique({
@@ -86,6 +86,7 @@ io.on("connection", (socket) => {
         text: savedMessage.text,
         senderEmail: senderMail,
         avatar: sender.avatar,
+        tempId: tempId,
         time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
             hour: 'numeric', minute: '2-digit', hour12: true 
         })

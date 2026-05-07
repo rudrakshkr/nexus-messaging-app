@@ -23,7 +23,14 @@ async function logInPost(req, res) {
             
             if (match) {
                 token = jwt.sign({ email: user.email, id: user.id }, process.env.SECRET_KEY, { expiresIn: '7d' });
-                return res.json({ token, email: user.email, id: user.id});
+                return res.json({ 
+                    token, 
+                    email: 
+                    user.email, 
+                    id: user.id, 
+                    avatar: user.avatar, 
+                    fullname: user.fullname
+                });
             } else {
                 return res.status(401).json({ message: "Invalid password" });
             }
