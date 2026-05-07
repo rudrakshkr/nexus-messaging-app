@@ -77,7 +77,17 @@ export default function ChatMessages({receiver}) {
     // Handle LIVE Messages
     useEffect(() => {
         const handleIncomingMessage = (msg) => {
-            setMessages((prev) => [...prev, msg])
+            setMessages((prev) => {
+                const isOptimisticMessagePending = prev.some(existingMsg => existingMsg.id === msg.tempId);
+
+                if(msg.tempId && isOptimisticMessagePending) {
+                    return prev.map(existingMsg => 
+                        existingMsg.id === msg.tempId ? msg : existingMsg
+                    )
+                }
+
+                return [...prev, msg]
+            })
         }
 
         socket.on("receiveMessage", handleIncomingMessage);
@@ -90,13 +100,31 @@ export default function ChatMessages({receiver}) {
     const sendMessage = () => {
         if(!inputText.trim() || !receiver) return;
 
+        const textToSend = inputText;
+        setInputText("");
+
+        const tempId = Date.now();
+        const userData = storedData ? JSON.parse(storedData) : null;
+        // Fake message
+        const optimisticMsg = {
+            id: tempId,
+            tempId: tempId,
+            text: textToSend,
+            senderEmail: myMail,
+            avatar: userData?.avatar,
+            time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}),
+            isPending: true
+        }
+
+        setMessages((prev) => [...prev, optimisticMsg]);
+
         // Send text and email to sendMessage
         socket.emit("sendMessage", {
             text: inputText,
             senderMail: myMail,
-            receiverId: receiver.id
+            receiverId: receiver.id,
+            tempId: tempId
         });
-        setInputText("");
     }
 
     // Allow sending with enter key
@@ -118,49 +146,61 @@ export default function ChatMessages({receiver}) {
                 </div>
 
                 {/* CHAT MESSAGE BOX */}
-                <div className="flex flex-col w-full gap-6">
+                <div className="flex flex-col w-full">
                     {messages.map((msg, index) => {
                         const isMyMessage = msg.senderEmail === myMail;
+                        
+                        // Grouping Logic
+                        const prevMsg = messages[index - 1];
+                        const nextMsg = messages[index + 1];
+                        
+                        const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsg.time !== msg.time;
+                        const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsg.time !== msg.time;
+
                         return (
                             <div 
-                                key={index} 
-                                className={`flex w-full ${isMyMessage ? 'justify-end' : 'justify-start'}`}
+                                key={msg.tempId || msg.id} 
+                                className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
                             >
                                 <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                                     
                                     {/* User avatar */}
-                                    <img 
-                                        src={msg.avatar}
-                                        alt={isMyMessage ? "You" : receiver.fullname} 
-                                        className="w-8 h-8 rounded-full object-cover mt-1"
-                                    />
+                                    <div className="w-8 flex-shrink-0 flex items-end">
+                                        {isLastInGroup && (
+                                            <img 
+                                                src={msg.avatar || `https://i.pravatar.cc/150?u=${msg.senderEmail}`}
+                                                alt={isMyMessage ? "You" : receiver.fullname} 
+                                                className="w-8 h-8 rounded-full object-cover"
+                                            />
+                                        )}
+                                    </div>
                                     
                                     {/* Message Content */}
-                                    <div className={`flex flex-col gap-1 ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                    <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                        
                                         {/* Name & Time */}
-                                        <div className={`flex items-baseline gap-2 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                            <span className="text-[13px] font-semibold text-[#e1e1e3]">
-                                                {isMyMessage ? 'You' : receiver.fullname}
-                                            </span>
-                                            <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
-                                        </div>
+                                        {isFirstInGroup && (
+                                            <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                <span className="text-[13px] font-semibold text-[#e1e1e3]">
+                                                    {isMyMessage ? 'You' : receiver.fullname}
+                                                </span>
+                                                <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                            </div>
+                                        )}
                                         
                                         {/* Message Bubble */}
-                                        <div className={`p-3 w-fit ${
+                                        <div className={`px-4 py-2 w-fit ${
                                             isMyMessage 
-                                                ? 'bg-[#8444f6] text-white rounded-2xl rounded-tr-sm' 
-                                                : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3] rounded-2xl rounded-tl-sm'
+                                                ? 'bg-[#8444f6] text-white' 
+                                                : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3]'
+                                        } 
+                                        ${isMyMessage 
+                                            ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
+                                            : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
                                         }`}>
-                                            <p className="text-[14px] mb-2">
+                                            <p className="text-[14px]">
                                                 {msg.text} 
                                             </p>
-                                            
-                                            {/* Link Badge/Button */}
-                                            {!isMyMessage && (
-                                                <button className="bg-[#2563eb]/20 text-[#60a5fa] border border-[#3b82f6]/30 text-[10px] font-semibold px-2 py-0.5 rounded transition-colors hover:bg-[#2563eb]/30">
-                                                    LINK
-                                                </button>
-                                            )}
                                         </div>
                                         
                                     </div>

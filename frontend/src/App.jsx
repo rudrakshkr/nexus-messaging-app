@@ -11,7 +11,7 @@ function App() {
     if(savedUser) {
       return JSON.parse(savedUser);
     }
-    return { auth: false, email: '', id: null }
+    return { auth: false, email: '', id: null, avatar: "", fullname: "" };
   });
 
   useEffect(() => {

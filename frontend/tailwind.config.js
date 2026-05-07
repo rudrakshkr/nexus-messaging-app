@@ -52,6 +52,10 @@ export default {
       sans: ['Inter', 'sans-serif'],
     },
     keyframes: {
+      messagePop: {
+        '0%': { opacity: '0', transform: 'translateY(20px) scale(0.95)' },
+        '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+      },
       fadeUp: {
         '0%': {opacity: '0', transform: 'translateY(20px)'},
         '100%': {opacity: '1', transform: 'translateY(0)'},
@@ -69,6 +73,7 @@ export default {
       'fade-up': 'fadeUp 0.5s ease-out forwards',
       'fade-down': 'fadeDown 0.5s ease-out forwards',
       'fade-out': 'fadeOut 0.5s ease-in forwards',
+      'message-pop': 'messagePop 0.25s ease-out forwards',
     }
   },
   plugins: [require("tailwindcss-animate")],

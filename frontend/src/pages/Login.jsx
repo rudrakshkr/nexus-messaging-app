@@ -64,7 +64,7 @@ export default function LoginPage({ setUser }) {
             else {
                 localStorage.setItem('jwtToken', data.token);
                 if (setUser) {
-                    setUser({ auth: true, email: data.email, id: data.id });
+                    setUser({ auth: true, email: data.email, id: data.id , avatar: data.avatar, fullname: data.fullname});
                 }
                 setTimeout(() => {
                     navigate('/', { 
