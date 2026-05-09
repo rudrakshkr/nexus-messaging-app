@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { io } from "socket.io-client";
+import EmojiPicker from "emoji-picker-react";
 
 const backend_url = import.meta.VITE_API_BASE_URL || "http://localhost:3000"
 const socket = io(backend_url);
@@ -10,14 +11,20 @@ export default function ChatMessages({receiver}) {
 
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
+
     const [selectedImage, setSelectedImage] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
     const [zoomedImage, setZoomedImage] = useState(null);
+
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
+
     const [errors, setErrors] = useState("");
 
     // Create referance
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+    const pickerRef = useRef(null); // Track popup menu
+    const buttonRef = useRef(null); // Track emoji button
 
     // Scroll to bottom smoothly
     const scrollToBottom = () => {
@@ -32,6 +39,26 @@ export default function ChatMessages({receiver}) {
     const storedData = localStorage.getItem("userData");
     const myMail = storedData ? JSON.parse(storedData).email : null;
     const myId = storedData ? JSON.parse(storedData).id : null;
+
+    // Handle outside click of emoji button
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // If the picker is open, AND the click was NOT inside the picker, AND the click was NOT on the button... close it!
+            if (
+                showEmojiPicker && 
+                pickerRef.current && !pickerRef.current.contains(event.target) &&
+                buttonRef.current && !buttonRef.current.contains(event.target)
+            ) {
+                setShowEmojiPicker(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showEmojiPicker]);
 
     // Tell socket server logged in user id
     useEffect(() => {
@@ -197,6 +224,10 @@ export default function ChatMessages({receiver}) {
         });
     }
 
+    const onEmojiClick = (emojiObject) => {
+        setInputText((prevInput) => prevInput + emojiObject.emoji);
+    }
+
     // Allow sending with enter key
     const handleKeyDown = (e) => {
         if(e.key === "Enter" && !e.shiftKey) {
@@ -320,8 +351,18 @@ export default function ChatMessages({receiver}) {
                         </div>
                     )}
 
-                    <div className="bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
-                        
+                    <div className="relative bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
+                        {/* Emoji Picker Popup  */}
+                        {showEmojiPicker && (
+                            <div ref={pickerRef} className="absolute bottom-[110%] right-0 z-50 shadow-2xl">
+                                <EmojiPicker 
+                                    onEmojiClick={onEmojiClick} 
+                                    theme="dark"
+                                    autoFocusSearch={false}
+                                />
+                            </div>
+                        )}
+
                         {/* THE HIDDEN INPUT */}
                         <input 
                             type="file" 
@@ -354,7 +395,12 @@ export default function ChatMessages({receiver}) {
 
                         {/* Right Side Icons */}
                         <div className="flex items-center gap-3 flex-shrink-0 text-[#8f8f96]">
-                            <button className="hover:text-[#e1e1e3] transition-colors">
+                            {/* Emoji Button  */}
+                            <button 
+                                ref={buttonRef}
+                                className={`transition-colors ${showEmojiPicker ? 'text-[#8444f6]' : 'hover:text-[#e1e1e3]'}`}
+                                onClick={() => setShowEmojiPicker((prev) => !prev)}
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
@@ -363,6 +409,7 @@ export default function ChatMessages({receiver}) {
                                 </svg>
                             </button>
                             
+                            {/* Voice Button  */}
                             <button className="hover:text-[#e1e1e3] transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>

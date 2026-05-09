@@ -12,6 +12,12 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
     // Errors State
     const [errors, setErrors] = useState("");
 
+    const handleLogout = async (e) => {
+        e.preventDefault(e)
+        localStorage.removeItem('jwtToken');
+        setUser({auth: false, name: ''})
+    }
+
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -138,7 +144,10 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
                             <div className="my-1.5 border-t border-[#2c2c2f]"></div>
                             
                             {/* Log Out Option */}
-                            <button className="flex items-center gap-3 w-full p-2.5 hover:bg-[#332222] rounded-lg text-red-400 text-[14px] font-medium transition-colors">
+                            <button 
+                                className="flex items-center gap-3 w-full p-2.5 hover:bg-[#332222] rounded-lg text-red-400 text-[14px] font-medium transition-colors"
+                                onClick={handleLogout}
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                                     <polyline points="16 17 21 12 16 7"></polyline>
