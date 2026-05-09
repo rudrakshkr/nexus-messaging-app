@@ -5,14 +5,19 @@ const backend_url = import.meta.VITE_API_BASE_URL || "http://localhost:3000"
 const socket = io(backend_url);
 
 export default function ChatMessages({receiver}) {
+    const API_URL = import.meta.env.VITE_API_BASE_URL || "";
     const token = localStorage.getItem("jwtToken");
 
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [zoomedImage, setZoomedImage] = useState(null);
     const [errors, setErrors] = useState("");
 
     // Create referance
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     // Scroll to bottom smoothly
     const scrollToBottom = () => {
@@ -95,13 +100,47 @@ export default function ChatMessages({receiver}) {
         return () => socket.off("receiveMessage", handleIncomingMessage);
     }, []);
 
+    // Handle image selection
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        const maxSizeInBytes = 25 * 1024 * 1024;
+
+        if(file && file.type.startsWith('image/')) {
+            if(file.size > maxSizeInBytes) {
+                alert("File size too much (greater than 25MB)");
+                setErrors("Image is too large! Please select a file smaller than 10MB.");
+                e.target.value = null;
+                return;
+            }
+
+            setSelectedFile(file);
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                setSelectedImage(reader.result);
+            }
+            reader.readAsDataURL(file);
+        }
+        e.target.value = null;
+    };
+
+    // Cancel selected image
+    const removeImage = () => {
+        setSelectedFile(null);
+        setSelectedImage(null);
+    }
+
 
     // Handle Sending
-    const sendMessage = () => {
-        if(!inputText.trim() || !receiver) return;
+    const sendMessage = async () => {
+        if(!inputText.trim() && !selectedFile || !receiver) return;
 
         const textToSend = inputText;
+        const fileToUpload = selectedFile;
+        const previewImage = selectedImage;
+
         setInputText("");
+        removeImage();
 
         const tempId = Date.now();
         const userData = storedData ? JSON.parse(storedData) : null;
@@ -110,6 +149,7 @@ export default function ChatMessages({receiver}) {
             id: tempId,
             tempId: tempId,
             text: textToSend,
+            imageUrl: previewImage,
             senderEmail: myMail,
             avatar: userData?.avatar,
             time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}),
@@ -118,9 +158,39 @@ export default function ChatMessages({receiver}) {
 
         setMessages((prev) => [...prev, optimisticMsg]);
 
-        // Send text and email to sendMessage
+        // File uploading logic
+        let finalImageUrl = null;
+
+        if(fileToUpload) {
+            const formData = new FormData();
+            formData.append("image", fileToUpload);
+
+            try {
+                const res = await fetch(`/api/uploadImage`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: formData
+                })
+
+                if(res.ok) {
+                    const data = await res.json();
+                    finalImageUrl = data.imageUrl;
+                } else {
+                    console.error("Upload failed!");
+                    return;
+                }
+            } catch(err) {
+                console.error("Network error during upload", err);
+                return;
+            }
+        }
+
+        // Send data to sendMessage event
         socket.emit("sendMessage", {
-            text: inputText,
+            text: textToSend,
+            imageUrl: finalImageUrl,
             senderMail: myMail,
             receiverId: receiver.id,
             tempId: tempId
@@ -198,9 +268,20 @@ export default function ChatMessages({receiver}) {
                                             ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
                                             : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
                                         }`}>
-                                            <p className="text-[14px]">
-                                                {msg.text} 
-                                            </p>
+                                            {msg.imageUrl && (
+                                                <img 
+                                                    src={msg.imageUrl} 
+                                                    alt="Attachment" 
+                                                    onClick={() => setZoomedImage(msg.imageUrl)}
+                                                    className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                />
+                                            )}
+
+                                            {msg.text && (
+                                                <p className="text-[14px]">
+                                                    {msg.text} 
+                                                </p>
+                                            )}
                                         </div>
                                         
                                     </div>
@@ -215,9 +296,47 @@ export default function ChatMessages({receiver}) {
             {/* Input section  */}
             <div className="p-6 pt-2 shrink-0">
                 <div className="border-t border-[#2c2c2f] pt-4">
+                    
+                    {/* IMAGE PREVIEW BOX */}
+                    {selectedImage && (
+                        <div className="mb-3 relative inline-block">
+                            <div className="bg-[#161618] border border-[#2c2c2f] rounded-lg p-2 w-fit">
+                                <img 
+                                    src={selectedImage} 
+                                    alt="Preview" 
+                                    className="h-24 w-auto rounded object-cover"
+                                />
+                                {/* Cancel Button */}
+                                <button 
+                                    onClick={removeImage}
+                                    className="absolute -top-2 -right-2 bg-[#2a2a2e] border border-[#2c2c2f] hover:bg-red-500 hover:text-white hover:border-red-500 text-[#8f8f96] rounded-full w-6 h-6 flex items-center justify-center transition-colors shadow-lg"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
+                        
+                        {/* THE HIDDEN INPUT */}
+                        <input 
+                            type="file" 
+                            name="image"
+                            accept="image/*" 
+                            className="hidden" 
+                            ref={fileInputRef} 
+                            onChange={handleImageSelect} 
+                        />
+
                         {/* Attachment Icon */}
-                        <button className="text-[#8f8f96] hover:text-[#e1e1e3] transition-colors flex-shrink-0">
+                        <button 
+                            onClick={() => fileInputRef.current.click()} 
+                            className="text-[#8f8f96] hover:text-[#e1e1e3] transition-colors flex-shrink-0"
+                        >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
                             </svg>
@@ -235,7 +354,6 @@ export default function ChatMessages({receiver}) {
 
                         {/* Right Side Icons */}
                         <div className="flex items-center gap-3 flex-shrink-0 text-[#8f8f96]">
-                            {/* Emoji Icon */}
                             <button className="hover:text-[#e1e1e3] transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -245,7 +363,6 @@ export default function ChatMessages({receiver}) {
                                 </svg>
                             </button>
                             
-                            {/* Mic Icon */}
                             <button className="hover:text-[#e1e1e3] transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -264,16 +381,33 @@ export default function ChatMessages({receiver}) {
                             </button>
                         </div>
                     </div>
-
-                    {/* Helper Text (Keyboard Shortcuts) */}
-                    <div className="flex justify-center mt-3 text-[#52525b] text-[10px]">
-                        <p>
-                            Press <kbd className="bg-[#161618] border border-[#2c2c2f] rounded px-1.5 py-0.5 mx-0.5 text-[#8f8f96] font-sans">Enter</kbd> to send, <kbd className="bg-[#161618] border border-[#2c2c2f] rounded px-1.5 py-0.5 mx-0.5 text-[#8f8f96] font-sans">Shift + Enter</kbd> for new line
-                        </p>
-                    </div>
-
                 </div>
             </div>
+            {/* FULL SCREEN IMAGE MODAL */}
+            {zoomedImage && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+                    onClick={() => setZoomedImage(null)}
+                >
+                    {/* Close Button */}
+                    <button 
+                        onClick={() => setZoomedImage(null)}
+                        className="absolute top-6 right-6 text-[#8f8f96] hover:text-white bg-[#161618]/50 hover:bg-[#2c2c2f] rounded-full p-2 transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+
+                    <img 
+                        src={zoomedImage} 
+                        alt="Zoomed"
+                        onClick={(e) => e.stopPropagation()} 
+                        className="max-w-full max-h-full object-contain rounded-md shadow-2xl animate-in zoom-in-95 duration-200"
+                    />
+                </div>
+            )}
         </div>
     )
 }
