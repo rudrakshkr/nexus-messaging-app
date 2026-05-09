@@ -7,7 +7,6 @@ const {
     usersGet,
     messagesGet,
     uploadImage,
-    logout,
 } = require("../controllers/indexController");
 
 // Upload middleware
@@ -21,7 +20,6 @@ const upload = uploadMiddleware("uploads")
 // Public Routes
 indexRouter.post('/api/login', logInPost);
 indexRouter.post('/api/sign-up', signUpPagePost);
-indexRouter.get('/api/logout', logout);
 
 // Protected Routes
 indexRouter.get('/api/getUsers', verifyToken, usersGet);

@@ -202,16 +202,11 @@ async function uploadImage(req, res, next) {
     }
 }
 
-function logout(req, res) {
-    return res.sendStatus(200);
-}
-
 module.exports = {
     logInPost,
     verifyToken,
     signUpPagePost,
     messagesGet,
     uploadImage,
-    logout,
     usersGet
 }
