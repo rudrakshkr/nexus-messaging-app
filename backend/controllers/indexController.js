@@ -170,6 +170,7 @@ async function messagesGet(req, res, next) {
         const formattedMessages = sharedRoom.messages.map(msg => ({
             id: msg.id,
             text: msg.text,
+            imageUrl: msg.imageUrl,
             senderEmail: msg.sender.email,
             avatar: msg.sender.avatar,
             time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
@@ -186,6 +187,21 @@ async function messagesGet(req, res, next) {
     }
 }
 
+async function uploadImage(req, res, next) {
+    try {
+        if(!req.file) {
+            return res.status(400).json({message: "No file uploaded"});
+        }
+
+        const uploadedUrl = req.file.path;
+
+        return res.status(200).json({imageUrl: uploadedUrl});
+    } catch(err) {
+        console.error("Upload error:", err);
+        return res.status(500).json({ message: "File upload failed" });
+    }
+}
+
 function logout(req, res) {
     return res.sendStatus(200);
 }
@@ -195,6 +211,7 @@ module.exports = {
     verifyToken,
     signUpPagePost,
     messagesGet,
+    uploadImage,
     logout,
     usersGet
 }

@@ -65,6 +65,7 @@ model RoomParticipant {
 model Message {
   id Int    @id @default(autoincrement())
   text String @db.Text
+  imageUrl String? @db.Text
   createdAt DateTime @default(now())
 
   // Relation to user

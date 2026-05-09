@@ -22,6 +22,7 @@ const frontend_url = process.env.FRONTEND_URL || "http://localhost:5175"
 const {Server} = require('socket.io');
 const server = http.createServer(app);
 const io = new Server(server, {
+  maxHttpBufferSize: 1e8,
   cors: {
     origin: frontend_url,  
     methods: ["GET", "POST"]
@@ -38,7 +39,7 @@ io.on("connection", (socket) => {
 
   // Handle incoming live messages
   socket.on("sendMessage", async (data) => {
-    const {text, senderMail, receiverId, tempId} = data;
+    const {text, imageUrl, senderMail, receiverId, tempId} = data;
 
     try {
       const sender = await prisma.users.findUnique({
@@ -75,15 +76,21 @@ io.on("connection", (socket) => {
       // Save message to database
       const savedMessage = await prisma.message.create({
         data: {
-          text: text,
-          senderId: sender.id,
-          roomId: sharedRoom.id
+          text: text || "",
+          imageUrl: imageUrl,
+          sender: {
+            connect: {id: sender.id}
+          },
+          room: {
+            connect: {id: sharedRoom.id}
+          }
         }
       });
 
       const formattedMessage = {
         id: savedMessage.id,
         text: savedMessage.text,
+        imageUrl: savedMessage.imageUrl,
         senderEmail: senderMail,
         avatar: sender.avatar,
         tempId: tempId,
