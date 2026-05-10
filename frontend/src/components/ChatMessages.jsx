@@ -15,6 +15,7 @@ export default function ChatMessages({receiver}) {
     const [selectedImage, setSelectedImage] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
     const [zoomedImage, setZoomedImage] = useState(null);
+    const [isListening, setIsListening] = useState(false);
 
     const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
 
@@ -25,6 +26,36 @@ export default function ChatMessages({receiver}) {
     const fileInputRef = useRef(null);
     const pickerRef = useRef(null); // Track popup menu
     const buttonRef = useRef(null); // Track emoji button
+    const recognitionRef = useRef(null);
+
+    // Set up speech recognisation
+    useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if(SpeechRecognition) {
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.continuous = true;
+            recognitionRef.current.interimResults = false;
+
+            recognitionRef.current.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                setInputText((prev) => prev + transcript + " ");
+            };
+
+            recognitionRef.current.onend =() => {
+                setIsListening(false);
+            }
+
+            recognitionRef.current.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                setIsListening(false);
+                alert("Please provide mic permissions to proceed")
+            }
+        } else {
+            console.warn("Speech recognition is not supported in this browser");
+            alert("Speech recognition is not supported in this browser")
+        }
+    }, []);
 
     // Scroll to bottom smoothly
     const scrollToBottom = () => {
@@ -157,6 +188,21 @@ export default function ChatMessages({receiver}) {
         setSelectedImage(null);
     }
 
+    // Toggle Microphone
+    const toggleListening = () => {
+        if(!recognitionRef.current) {
+            alert("Your browser does not support voice-to-text!");
+            return;
+        }
+
+        if(isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        } else {
+            recognitionRef.current.start();
+            setIsListening(true);
+        }
+    }
 
     // Handle Sending
     const sendMessage = async () => {
@@ -165,6 +211,11 @@ export default function ChatMessages({receiver}) {
         const textToSend = inputText;
         const fileToUpload = selectedFile;
         const previewImage = selectedImage;
+
+        if(isListening && recognitionRef.current) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        }
 
         setInputText("");
         removeImage();
@@ -410,7 +461,14 @@ export default function ChatMessages({receiver}) {
                             </button>
                             
                             {/* Voice Button  */}
-                            <button className="hover:text-[#e1e1e3] transition-colors">
+                            <button 
+                                onClick={toggleListening}
+                                className={`transition-all duration-200 ${
+                                    isListening 
+                                        ? 'text-red-500 animate-pulse scale-110'
+                                        : 'text-[#8f8f96] hover:text-[#e1e1e3]'
+                                }`}
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
