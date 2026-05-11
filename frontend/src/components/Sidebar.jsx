@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react"
 
-export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
+export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [users, setUsers] = useState([]);
+
+    const [rooms, setRooms] = useState([]);
+
     const [loggedUser, setLoggedUser] = useState([]);
 
-    // Loading State
     const [isLoading, setIsLoading] = useState(true);
-
-    // Errors State
     const [errors, setErrors] = useState("");
 
     const handleLogout = async (e) => {
@@ -19,9 +18,9 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
     }
 
     useEffect(() => {
-        const fetchUsers = async () => {
+        const fetchRooms = async () => {
             try {
-                const getUsers = await fetch(`/api/getUsers`, {
+                const res = await fetch(`/api/getRooms`, {
                     method: 'GET',
                     headers: {
                         "Content-Type": "application/json",
@@ -29,13 +28,10 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
                     }
                 })
 
-                if(!getUsers.ok) throw new Error("Failed to get post.");
-                const usersData = await getUsers.json();
+                if(!res.ok) throw new Error("Failed to fetch rooms.");
+                const data = await res.json();
 
-                // Get all users not including the one logged in
-                setUsers(usersData.users.filter((getUser) => getUser.email !== user.email))
-                // Set logged user state
-                setLoggedUser(usersData.users.filter((getUser) => getUser.email === user.email));
+                setRooms(data.rooms);
             } catch(err) {
                 console.error("Fetch error: ", err);
                 setErrors("Failed to load page data.");
@@ -43,13 +39,8 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
                 setIsLoading(false);
             }
         }
-        fetchUsers();
+        fetchRooms();
     }, [token]);
-
-    useEffect(() => {
-        if (users.length > 0) {
-        }
-    }, [users]);
 
     return (
         <section className="flex flex-col flex-1 bg-[#161618] border-r border-[#2c2c2f]">
@@ -74,44 +65,58 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
             <div className="flex flex-col w-full h-full max-h-screen overflow-hidden">
                 {/* Contact Info Cards */}
                 <div className="flex-1 overflow-y-auto">
-                    {users.map((user) => {
+                    {rooms.map((room) => {
+                        const isGroup = room.type === 'GROUP';
+
+                        // Find the other person in 1-on-1 chat
+                        const otherParticipant = !isGroup
+                            ? room.participants.find(p => p.user.email !== user.email)?.user
+                            : null;
+
+                        const displayName = isGroup ? room.subject : otherParticipant?.fullname;
+                        const displayAvatar = isGroup ? room.avatar : otherParticipant?.avatar;
+
+                        const lastMessage = room.messages?.length > 0
+                            ? (room.messages[0].text.trim().length !== 0 ? room.messages[0].text : "📎 Attachment")
+                            : "No messages yet";
+                        
+                        const displayTime = room.messages?.length > 0
+                            ? new Date(room.messages[0].createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                            : "";
                         return (
                             <div 
                                 className={`relative flex items-center gap-3 p-3 w-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden ${
-                                    activeUser?.id === user.id 
+                                    activeRoom?.id === room.id 
                                         ? 'bg-[#2a2a2e] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[60%] before:w-1.5 before:bg-[#8444f6] before:rounded-r-md' 
                                         : 'hover:bg-white/5'
                                 }`}
-                                key={user.id}
-                                onClick={() => onSelectUser(user)}
+                                key={room.id}
+                                onClick={() => onSelectRoom(room)}
                             >
                                 <div className="relative flex-shrink-0">
                                     <img 
-                                        src={user.avatar} 
-                                        alt={user.fullname} 
+                                        src={displayAvatar} 
+                                        alt={displayName} 
                                         className="w-11 h-11 rounded-full object-cover"
                                     />
-                                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
+                                    {/* ToDo: Handle green dot for online status */}
+                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
                                 </div>
 
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate pr-2">
-                                            {user.fullname}
+                                            {displayName}
                                         </h3>
                                         <span className="text-xs text-[#8f8f96] flex-shrink-0">
-                                            10:42 AM
+                                            {displayTime}
                                         </span>
                                     </div>
 
                                     <div className="flex justify-between items-center">
                                         <p className="text-[13px] font-medium text-[#c0c0c8] truncate pr-4">
-                                            No rush, whenever you have time
+                                            {lastMessage}
                                         </p>
-                                        {/* Notification Count */}
-                                        <div className="w-5 h-5 bg-[#8444f6] rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-[0_2px_10px_rgba(132,68,246,0.3)]">
-                                            2
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -163,29 +168,25 @@ export default function Sidebar({user, setUser, onSelectUser, activeUser}) {
                         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                         className="flex justify-between items-center gap-3 p-3 w-full hover:bg-white/5 cursor-pointer transition-colors"
                     >
-                        {loggedUser.length !== 0 && (
-                            <div className="flex items-center gap-3 min-w-0">
-                                {/* Avatar  */}
-                                <div className="relative flex-shrink-0">
-                                    <img 
-                                        src={loggedUser[0].avatar}
-                                        alt="Alex Chen" 
-                                        className="w-10 h-10 rounded-full object-cover"
-                                    />
-                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
-                                </div>
-
-                                {/* Name and Status */}
-                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                    <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate">
-                                        {loggedUser[0].fullname}
-                                    </h3>
-                                    <p className="text-[13px] font-medium text-[#8f8f96] truncate">
-                                        Working
-                                    </p>
-                                </div>
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative flex-shrink-0">
+                                <img 
+                                    src={user.avatar}
+                                    alt={user.fullname} 
+                                    className="w-10 h-10 rounded-full object-cover"
+                                />
+                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
                             </div>
-                        )}
+
+                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate">
+                                    {user.fullname}
+                                </h3>
+                                <p className="text-[13px] font-medium text-[#8f8f96] truncate">
+                                    Online
+                                </p>
+                            </div>
+                        </div>
 
                         {/* Dropdown Icon */}
                         <div className="flex-shrink-0 text-gray-500">

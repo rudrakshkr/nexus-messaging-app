@@ -2,11 +2,10 @@ import { useEffect, useState, useRef } from "react"
 import { io } from "socket.io-client";
 import EmojiPicker from "emoji-picker-react";
 
-const backend_url = import.meta.VITE_API_BASE_URL || "http://localhost:3000"
+const backend_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 const socket = io(backend_url);
 
-export default function ChatMessages({receiver}) {
-    const API_URL = import.meta.env.VITE_API_BASE_URL || "";
+export default function ChatMessages({ activeRoom, roomId, user }) {
     const token = localStorage.getItem("jwtToken");
 
     const [messages, setMessages] = useState([]);
@@ -16,22 +15,24 @@ export default function ChatMessages({receiver}) {
     const [selectedFile, setSelectedFile] = useState(null);
     const [zoomedImage, setZoomedImage] = useState(null);
     const [isListening, setIsListening] = useState(false);
-
     const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
-
     const [errors, setErrors] = useState("");
 
-    // Create referance
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
-    const pickerRef = useRef(null); // Track popup menu
-    const buttonRef = useRef(null); // Track emoji button
+    const pickerRef = useRef(null); 
+    const buttonRef = useRef(null); 
     const recognitionRef = useRef(null);
 
-    // Set up speech recognisation
+    // Display logic
+    const isGroup = activeRoom?.type === 'GROUP';
+    const otherParticipant = !isGroup
+        ? activeRoom?.participants?.find(p => p.user.email !== user.email)?.user
+        : null;
+    const displayName = isGroup ? activeRoom?.subject : otherParticipant?.fullname;
+
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
         if(SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
             recognitionRef.current.continuous = true;
@@ -42,9 +43,7 @@ export default function ChatMessages({receiver}) {
                 setInputText((prev) => prev + transcript + " ");
             };
 
-            recognitionRef.current.onend =() => {
-                setIsListening(false);
-            }
+            recognitionRef.current.onend =() => setIsListening(false);
 
             recognitionRef.current.onerror = (event) => {
                 console.error("Speech recognition error:", event.error);
@@ -53,11 +52,9 @@ export default function ChatMessages({receiver}) {
             }
         } else {
             console.warn("Speech recognition is not supported in this browser");
-            alert("Speech recognition is not supported in this browser")
         }
     }, []);
 
-    // Scroll to bottom smoothly
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
     };
@@ -66,15 +63,12 @@ export default function ChatMessages({receiver}) {
         scrollToBottom();
     }, [messages])
 
-    // Get user identity
     const storedData = localStorage.getItem("userData");
     const myMail = storedData ? JSON.parse(storedData).email : null;
     const myId = storedData ? JSON.parse(storedData).id : null;
 
-    // Handle outside click of emoji button
     useEffect(() => {
         const handleClickOutside = (event) => {
-            // If the picker is open, AND the click was NOT inside the picker, AND the click was NOT on the button... close it!
             if (
                 showEmojiPicker && 
                 pickerRef.current && !pickerRef.current.contains(event.target) &&
@@ -85,38 +79,28 @@ export default function ChatMessages({receiver}) {
         };
 
         document.addEventListener("mousedown", handleClickOutside);
-        
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showEmojiPicker]);
 
-    // Tell socket server logged in user id
     useEffect(() => {
         if(!myId) return;
         
-        const handleSetup = () => {
-            socket.emit("setup", myId);
-        }
-        if(socket.connected) {
-            handleSetup();
-        }
-
+        const handleSetup = () => socket.emit("setup", myId);
+        
+        if(socket.connected) handleSetup();
         socket.on("connect", handleSetup);
 
-        return () => {
-            socket.off("connect", handleSetup);
-        }
+        return () => socket.off("connect", handleSetup);
     }, [myId]);
 
-    // FETCH CHAT HISTORY
+    // 2. FETCH HISTORY BY ROOM ID
     useEffect(() => {
-        if(!receiver) return;
+        if(!roomId) return;
         setMessages([]);
 
         const fetchMessageHistory = async () => {
             try {
-                const res = await fetch(`/api/messages/${receiver.id}`, {
+                const res = await fetch(`/api/messages/${roomId}`, {
                     method: 'GET',
                     headers: {
                         "Content-Type": "application/json",
@@ -134,12 +118,12 @@ export default function ChatMessages({receiver}) {
         };
 
         fetchMessageHistory();
-    }, [receiver]);
+    }, [roomId, token]);
 
-
-    // Handle LIVE Messages
     useEffect(() => {
         const handleIncomingMessage = (msg) => {
+            if (msg.roomId !== roomId) return; 
+
             setMessages((prev) => {
                 const isOptimisticMessagePending = prev.some(existingMsg => existingMsg.id === msg.tempId);
 
@@ -148,17 +132,14 @@ export default function ChatMessages({receiver}) {
                         existingMsg.id === msg.tempId ? msg : existingMsg
                     )
                 }
-
                 return [...prev, msg]
             })
         }
 
         socket.on("receiveMessage", handleIncomingMessage);
-
         return () => socket.off("receiveMessage", handleIncomingMessage);
-    }, []);
+    }, [roomId]);
 
-    // Handle image selection
     const handleImageSelect = (e) => {
         const file = e.target.files[0];
         const maxSizeInBytes = 25 * 1024 * 1024;
@@ -166,7 +147,7 @@ export default function ChatMessages({receiver}) {
         if(file && file.type.startsWith('image/')) {
             if(file.size > maxSizeInBytes) {
                 alert("File size too much (greater than 25MB)");
-                setErrors("Image is too large! Please select a file smaller than 10MB.");
+                setErrors("Image is too large! Please select a file smaller than 25MB.");
                 e.target.value = null;
                 return;
             }
@@ -174,26 +155,19 @@ export default function ChatMessages({receiver}) {
             setSelectedFile(file);
 
             const reader = new FileReader();
-            reader.onload = () => {
-                setSelectedImage(reader.result);
-            }
+            reader.onload = () => setSelectedImage(reader.result);
             reader.readAsDataURL(file);
         }
         e.target.value = null;
     };
 
-    // Cancel selected image
     const removeImage = () => {
         setSelectedFile(null);
         setSelectedImage(null);
     }
 
-    // Toggle Microphone
     const toggleListening = () => {
-        if(!recognitionRef.current) {
-            alert("Your browser does not support voice-to-text!");
-            return;
-        }
+        if(!recognitionRef.current) return alert("Your browser does not support voice-to-text!");
 
         if(isListening) {
             recognitionRef.current.stop();
@@ -204,9 +178,8 @@ export default function ChatMessages({receiver}) {
         }
     }
 
-    // Handle Sending
     const sendMessage = async () => {
-        if(!inputText.trim() && !selectedFile || !receiver) return;
+        if((!inputText.trim() && !selectedFile) || !roomId) return;
 
         const textToSend = inputText;
         const fileToUpload = selectedFile;
@@ -222,7 +195,7 @@ export default function ChatMessages({receiver}) {
 
         const tempId = Date.now();
         const userData = storedData ? JSON.parse(storedData) : null;
-        // Fake message
+        
         const optimisticMsg = {
             id: tempId,
             tempId: tempId,
@@ -231,12 +204,12 @@ export default function ChatMessages({receiver}) {
             senderEmail: myMail,
             avatar: userData?.avatar,
             time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}),
-            isPending: true
+            isPending: true,
+            roomId: roomId
         }
 
         setMessages((prev) => [...prev, optimisticMsg]);
 
-        // File uploading logic
         let finalImageUrl = null;
 
         if(fileToUpload) {
@@ -246,9 +219,7 @@ export default function ChatMessages({receiver}) {
             try {
                 const res = await fetch(`/api/uploadImage`, {
                     method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    },
+                    headers: { "Authorization": `Bearer ${token}` },
                     body: formData
                 })
 
@@ -265,12 +236,11 @@ export default function ChatMessages({receiver}) {
             }
         }
 
-        // Send data to sendMessage event
         socket.emit("sendMessage", {
             text: textToSend,
             imageUrl: finalImageUrl,
-            senderMail: myMail,
-            receiverId: receiver.id,
+            senderEmail: myMail,
+            roomId: roomId,
             tempId: tempId
         });
     }
@@ -279,7 +249,6 @@ export default function ChatMessages({receiver}) {
         setInputText((prevInput) => prevInput + emojiObject.emoji);
     }
 
-    // Allow sending with enter key
     const handleKeyDown = (e) => {
         if(e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -297,12 +266,10 @@ export default function ChatMessages({receiver}) {
                     </span>
                 </div>
 
-                {/* CHAT MESSAGE BOX */}
                 <div className="flex flex-col w-full">
                     {messages.map((msg, index) => {
                         const isMyMessage = msg.senderEmail === myMail;
                         
-                        // Grouping Logic
                         const prevMsg = messages[index - 1];
                         const nextMsg = messages[index + 1];
                         
@@ -316,31 +283,28 @@ export default function ChatMessages({receiver}) {
                             >
                                 <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                                     
-                                    {/* User avatar */}
                                     <div className="w-8 flex-shrink-0 flex items-end">
                                         {isLastInGroup && (
                                             <img 
-                                                src={msg.avatar || `https://i.pravatar.cc/150?u=${msg.senderEmail}`}
-                                                alt={isMyMessage ? "You" : receiver.fullname} 
+                                                src={msg.avatar}
+                                                alt={isMyMessage ? "You" : "User"} 
                                                 className="w-8 h-8 rounded-full object-cover"
                                             />
                                         )}
                                     </div>
                                     
-                                    {/* Message Content */}
                                     <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
                                         
                                         {/* Name & Time */}
                                         {isFirstInGroup && (
                                             <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                                                 <span className="text-[13px] font-semibold text-[#e1e1e3]">
-                                                    {isMyMessage ? 'You' : receiver.fullname}
+                                                    {isMyMessage ? 'You' : msg.sender?.fullname}
                                                 </span>
                                                 <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
                                             </div>
                                         )}
                                         
-                                        {/* Message Bubble */}
                                         <div className={`px-4 py-2 w-fit ${
                                             isMyMessage 
                                                 ? 'bg-[#8444f6] text-white' 
@@ -365,7 +329,6 @@ export default function ChatMessages({receiver}) {
                                                 </p>
                                             )}
                                         </div>
-                                        
                                     </div>
                                 </div>
                             </div>
@@ -375,11 +338,9 @@ export default function ChatMessages({receiver}) {
                 </div>
             </div>
             
-            {/* Input section  */}
             <div className="p-6 pt-2 shrink-0">
                 <div className="border-t border-[#2c2c2f] pt-4">
                     
-                    {/* IMAGE PREVIEW BOX */}
                     {selectedImage && (
                         <div className="mb-3 relative inline-block">
                             <div className="bg-[#161618] border border-[#2c2c2f] rounded-lg p-2 w-fit">
@@ -388,7 +349,6 @@ export default function ChatMessages({receiver}) {
                                     alt="Preview" 
                                     className="h-24 w-auto rounded object-cover"
                                 />
-                                {/* Cancel Button */}
                                 <button 
                                     onClick={removeImage}
                                     className="absolute -top-2 -right-2 bg-[#2a2a2e] border border-[#2c2c2f] hover:bg-red-500 hover:text-white hover:border-red-500 text-[#8f8f96] rounded-full w-6 h-6 flex items-center justify-center transition-colors shadow-lg"
@@ -403,7 +363,6 @@ export default function ChatMessages({receiver}) {
                     )}
 
                     <div className="relative bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
-                        {/* Emoji Picker Popup  */}
                         {showEmojiPicker && (
                             <div ref={pickerRef} className="absolute bottom-[110%] right-0 z-50 shadow-2xl">
                                 <EmojiPicker 
@@ -414,7 +373,6 @@ export default function ChatMessages({receiver}) {
                             </div>
                         )}
 
-                        {/* THE HIDDEN INPUT */}
                         <input 
                             type="file" 
                             name="image"
@@ -424,7 +382,6 @@ export default function ChatMessages({receiver}) {
                             onChange={handleImageSelect} 
                         />
 
-                        {/* Attachment Icon */}
                         <button 
                             onClick={() => fileInputRef.current.click()} 
                             className="text-[#8f8f96] hover:text-[#e1e1e3] transition-colors flex-shrink-0"
@@ -434,19 +391,16 @@ export default function ChatMessages({receiver}) {
                             </svg>
                         </button>
 
-                        {/* Text Input */}
                         <input 
                             type="text" 
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={`Message ${receiver.fullname ? receiver.fullname.split(' ')[0] : '...'}`}
+                            placeholder={`Message ${displayName?.split(' ')[0] || 'Group'}...`}
                             className="flex-1 bg-transparent border-none outline-none text-[#e1e1e3] text-[14px] placeholder-[#8f8f96] px-3"
                         />
 
-                        {/* Right Side Icons */}
                         <div className="flex items-center gap-3 flex-shrink-0 text-[#8f8f96]">
-                            {/* Emoji Button  */}
                             <button 
                                 ref={buttonRef}
                                 className={`transition-colors ${showEmojiPicker ? 'text-[#8444f6]' : 'hover:text-[#e1e1e3]'}`}
@@ -460,7 +414,6 @@ export default function ChatMessages({receiver}) {
                                 </svg>
                             </button>
                             
-                            {/* Voice Button  */}
                             <button 
                                 onClick={toggleListening}
                                 className={`transition-all duration-200 ${
@@ -477,7 +430,6 @@ export default function ChatMessages({receiver}) {
                                 </svg>
                             </button>
                             
-                            {/* Send Icon */}
                             <button className="hover:text-[#8444f6] transition-colors" onClick={sendMessage}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -488,13 +440,12 @@ export default function ChatMessages({receiver}) {
                     </div>
                 </div>
             </div>
-            {/* FULL SCREEN IMAGE MODAL */}
+            
             {zoomedImage && (
                 <div 
                     className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
                     onClick={() => setZoomedImage(null)}
                 >
-                    {/* Close Button */}
                     <button 
                         onClick={() => setZoomedImage(null)}
                         className="absolute top-6 right-6 text-[#8f8f96] hover:text-white bg-[#161618]/50 hover:bg-[#2c2c2f] rounded-full p-2 transition-colors"

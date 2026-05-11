@@ -4,7 +4,7 @@ import ChatMessages from "../components/ChatMessages"
 import { useState } from "react"
 
 export default function ChatPage({user, setUser}) {
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [activeRoom, setActiveRoom] = useState(null);
 
     return (
         <main className="w-full h-screen overflow-hidden flex bg-[#0f0f0f] text-white font-sans">
@@ -12,18 +12,25 @@ export default function ChatPage({user, setUser}) {
             <Sidebar 
                 user={user} 
                 setUser={setUser} 
-                onSelectUser={setSelectedUser}
-                activeUser={selectedUser} 
+                onSelectRoom={setActiveRoom}
+                activeRoom={activeRoom} 
             />
             {/* Chat section  */}
             <section className="flex flex-col flex-[5] border-l border-[#2c2c2f]">
-                {selectedUser ? (
+                {activeRoom ? (
                     <>
                         {/* CHAT HEADER  */}
-                        <ChatHeader activeUser={selectedUser}/>
+                        <ChatHeader 
+                            user={user}
+                            activeRoom={activeRoom}
+                        />
                         
                         {/* Chat Messages */}
-                        <ChatMessages receiver={selectedUser}/>
+                        <ChatMessages
+                            user={user} 
+                            activeRoom={activeRoom}
+                            roomId={activeRoom.id}
+                        />
                     </>
                 ): (
                     <div className="flex-1 flex items-center justify-center text-[#8f8f96]">
