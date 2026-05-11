@@ -32,48 +32,37 @@ io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   // Users joining room after their own room id
-  socket.on("setup", (myUserId) => {
+  socket.on("setup", async (myUserId) => {
     socket.join(myUserId.toString());
-    console.log("User joined their personal socket room:", myUserId);
+    
+    try {
+      const userRooms = await prisma.roomParticipant.findMany({
+        where: {userId: parseInt(myUserId)},
+        select: {roomId: true}
+      })
+
+      userRooms.forEach((participant) => {
+        socket.join(participant.roomId.toString());
+      })
+
+      console.log(`User ${myUserId} joined personal room and ${userRooms.length} active chats.`);
+    } catch(err) {
+      console.error("Error joining rooms on setup:", err);
+    }
   })
 
   // Handle incoming live messages
   socket.on("sendMessage", async (data) => {
-    const {text, imageUrl, senderMail, receiverId, tempId} = data;
+    const {text, imageUrl, senderEmail, roomId, tempId} = data;
 
     try {
       const sender = await prisma.users.findUnique({
-        where: {email: senderMail}
+        where: {email: senderEmail}
       })
 
       if(!sender) return;
 
-      // Find shared room
-      let sharedRoom = await prisma.room.findFirst({
-        where: {
-          type: 'DIRECT',
-          AND: [
-            { participants: {some: {userId: sender.id } } },
-            { participants: {some: {userId: receiverId } } }
-          ]
-        }
-      })
-
-      // If first ever message between both, then create room
-      if(!sharedRoom) {
-        sharedRoom = await prisma.room.create({
-          data: {
-            type: 'DIRECT',
-            participants: {
-              create: [
-                {userId: sender.id},
-                {userId: receiverId}
-              ]
-            }
-          }
-        })
-      }
-      // Save message to database
+      // Save the message directly to room
       const savedMessage = await prisma.message.create({
         data: {
           text: text || "",
@@ -82,7 +71,7 @@ io.on("connection", (socket) => {
             connect: {id: sender.id}
           },
           room: {
-            connect: {id: sharedRoom.id}
+            connect: {id: roomId}
           }
         }
       });
@@ -91,16 +80,17 @@ io.on("connection", (socket) => {
         id: savedMessage.id,
         text: savedMessage.text,
         imageUrl: savedMessage.imageUrl,
-        senderEmail: senderMail,
+        senderEmail: senderEmail,
         avatar: sender.avatar,
         tempId: tempId,
+        roomId: roomId,
         time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
             hour: 'numeric', minute: '2-digit', hour12: true 
         })
       }
 
-      // Send it live to both receiver and back to sender
-      io.to(receiverId.toString()).to(sender.id.toString()).emit("receiveMessage", formattedMessage);
+      // Broadcast to entire room at once
+      io.to(roomId.toString()).emit("receiveMessage", formattedMessage);
 
     } catch(err) {
       console.error("Error saving/sending message:", err);

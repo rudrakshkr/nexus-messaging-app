@@ -130,20 +130,63 @@ async function usersGet(req, res, next) {
     }
 }
 
-async function messagesGet(req, res, next) {
+async function roomsGet(req, res, next) {
+    try {
+        const userId = parseInt(req.user.id);
+
+        const getRooms = await prisma.room.findMany({
+            where: {
+                participants: {
+                    some: {
+                        userId: userId
+                    }
+                }
+            },
+
+            include: {
+                participants: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                email: true,
+                                avatar: true,
+                            }
+                        }
+                    }
+                },
+
+                messages: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    },
+                    take: 1
+                }
+            }
+        });
+
+        return res.status(200).json({rooms: getRooms});
+
+    } catch(err) {
+        console.error("Prisma Error: ", err);
+        return res.status(500).json({message: "Internal Server Error"});
+    }
+}
+
+async function roomIdGet(req, res, next) {
     try {
         const myUserId = parseInt(req.user.id);
-        const receiverId = parseInt(req.params.receiverId);
+        const roomId = parseInt(req.params.roomId);
 
         const sharedRoom = await prisma.room.findFirst({
             where: {
-                type: 'DIRECT',
-                AND: [
-                    // Must contain logged in user id
-                    {participants: {some: {userId: myUserId } } },
-                    // And receiver id
-                    {participants: {some: {userId: receiverId } } }
-                ]
+                id: roomId,
+                participants: {
+                    some: {
+                        userId: myUserId
+                    }
+                }
             },
             include: {
                 messages: {
@@ -171,7 +214,11 @@ async function messagesGet(req, res, next) {
             id: msg.id,
             text: msg.text,
             imageUrl: msg.imageUrl,
+            roomId: roomId,
             senderEmail: msg.sender.email,
+            sender: {
+                fullname: msg.sender.fullname
+            },
             avatar: msg.sender.avatar,
             time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', 
@@ -206,7 +253,8 @@ module.exports = {
     logInPost,
     verifyToken,
     signUpPagePost,
-    messagesGet,
+    roomIdGet,
+    roomsGet,
     uploadImage,
     usersGet
 }

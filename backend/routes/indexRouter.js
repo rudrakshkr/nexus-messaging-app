@@ -5,7 +5,8 @@ const {
     verifyToken, 
     signUpPagePost,
     usersGet,
-    messagesGet,
+    roomsGet,
+    roomIdGet,
     uploadImage,
 } = require("../controllers/indexController");
 
@@ -23,7 +24,8 @@ indexRouter.post('/api/sign-up', signUpPagePost);
 
 // Protected Routes
 indexRouter.get('/api/getUsers', verifyToken, usersGet);
-indexRouter.get('/api/messages/:receiverId', verifyToken, messagesGet);
+indexRouter.get('/api/getRooms', verifyToken, roomsGet);
+indexRouter.get('/api/messages/:roomId', verifyToken, roomIdGet);
 indexRouter.post('/api/uploadImage', verifyToken, upload.single('image'), uploadImage);
 
 module.exports = indexRouter;

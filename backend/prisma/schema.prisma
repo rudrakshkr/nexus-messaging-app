@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -15,6 +10,11 @@ datasource db {
 enum RoomType {
   DIRECT // 1 on 1 chats
   GROUP // Group chats
+}
+
+enum Role {
+  ADMIN
+  MEMBER
 }
 
 // Users Table
@@ -35,6 +35,7 @@ model Users {
 model Room {
   id Int    @id @default(autoincrement())
   subject String?
+  avatar String?
   type RoomType @default(DIRECT)
 
   // Relations
@@ -48,6 +49,7 @@ model Room {
 model RoomParticipant {
   id Int    @id @default(autoincrement())
   joinedAt DateTime @default(now())
+  role Role @default(MEMBER)
 
   // Relation to user
   user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
