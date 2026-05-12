@@ -8,6 +8,7 @@ const {
     roomsGet,
     roomIdGet,
     uploadImage,
+    editProfile,
     createRoom,
 } = require("../controllers/indexController");
 
@@ -28,6 +29,7 @@ indexRouter.get('/api/getUsers', verifyToken, usersGet);
 indexRouter.get('/api/getRooms', verifyToken, roomsGet);
 indexRouter.get('/api/messages/:roomId', verifyToken, roomIdGet);
 indexRouter.post('/api/uploadImage', verifyToken, upload.single('image'), uploadImage);
+indexRouter.post('/api/editProfile', verifyToken, upload.single('avatar'), editProfile);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
 module.exports = indexRouter;

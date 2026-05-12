@@ -247,6 +247,50 @@ async function uploadImage(req, res, next) {
     }
 }
 
+async function editProfile(req, res, next) {
+    try {
+        const myUserId = parseInt(req.user.id);
+        const {fullname, email} = req.body;
+        const uploadedUrl = req.file?.path;
+
+        if(email) {
+            const existingUser = await prisma.users.findUnique({
+                where: {email: email}
+            })
+
+            if(existingUser && existingUser.id !== myUserId) {
+                return res.status(400).json({ message: "This email is already in use by another account." });
+            }
+        }
+
+        const updateData = {};
+        if(fullname) updateData.fullname = fullname;
+        if(email) updateData.email = email;
+        if(uploadedUrl) updateData.avatar = uploadedUrl;
+
+        const updatedUser = await prisma.users.update({
+            where: {
+                id: myUserId
+            },
+            data: updateData
+        })
+
+        return res.status(200).json({
+            message: "Profile updated successfully",
+            user: {
+                id: updatedUser.id,
+                fullname: updatedUser.fullname,
+                email: updatedUser.email,
+                avatar: updatedUser.avatar
+            }
+        });
+    }
+    catch(err) {
+        console.error("Couldn't edit profile", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 async function createRoom(req, res, next) {
     try {
         const myUserId = parseInt(req.user.id);
@@ -317,5 +361,6 @@ module.exports = {
     roomsGet,
     uploadImage,
     createRoom,
+    editProfile,
     usersGet
 }
