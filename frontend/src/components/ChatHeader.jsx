@@ -40,11 +40,18 @@ export default function ChatHeader({user, activeRoom}) {
                             {displayName ? displayName.charAt(0).toUpperCase() : '#'}
                         </div>
                     ) : (
-                        <img 
-                            src={displayAvatar} 
-                            alt={displayName} 
-                            className="w-11 h-11 rounded-full object-cover"
-                        />
+                        !otherParticipant.avatar ? (
+                            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
+                                {displayName ? displayName.charAt(0).toUpperCase() : '#'}
+                            </div>
+                        ) :
+                        (
+                            <img 
+                                src={displayAvatar} 
+                                alt={displayName} 
+                                className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}
+                            />
+                        )
                     )}
 
                     {!isGroup && (
