@@ -76,6 +76,23 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
         }
     };
 
+    const getAvatarColor = (name) => {
+        if(!name) return 'bg[#8444f6]';
+
+        const colors = [
+            'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
+            'bg-[#ffab00]', 'bg-[#0052cc]', 'bg-[#e34935]',
+            'bg-[#17a2b8]', 'bg-[#e83e8c]', 'bg-[#f6c23e]'
+        ];
+
+        let hash = 0;
+        for(let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        return colors[Math.abs(hash) % colors.length];
+    }
+
     if(!isOpen) return null;
 
     return (
@@ -122,11 +139,17 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
                                     }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <img 
-                                            src={u.avatar || `https://i.pravatar.cc/150?u=${u.email}`} 
-                                            alt={u.fullname} 
-                                            className="w-9 h-9 rounded-full object-cover"
-                                        />
+                                        {u.avatar ? (
+                                            <img 
+                                                src={u.avatar} 
+                                                alt={u.fullname} 
+                                                className="w-9 h-9 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[14px] shadow-inner ${getAvatarColor(u.fullname)}`}>
+                                                {u.fullname ? u.fullname.charAt(0).toUpperCase() : '#'}
+                                            </div>
+                                        )}
                                         <span className="text-[14px] font-medium text-[#e1e1e3]">{u.fullname}</span>
                                     </div>
                                     

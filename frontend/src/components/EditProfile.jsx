@@ -73,6 +73,23 @@ export default function EditProfile({user, setUser}) {
             setIsLoading(false);
         }
     }
+
+    const getAvatarColor = (name) => {
+        if(!name) return 'bg[#8444f6]';
+
+        const colors = [
+            'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
+            'bg-[#ffab00]', 'bg-[#0052cc]', 'bg-[#e34935]',
+            'bg-[#17a2b8]', 'bg-[#e83e8c]', 'bg-[#f6c23e]'
+        ];
+
+        let hash = 0;
+        for(let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        return colors[Math.abs(hash) % colors.length];
+    }
     return (
         <div className="min-h-screen bg-[#0f0f0f] text-white font-sans flex flex-col items-center py-10 px-4">    
             <div className="w-full max-w-md">
@@ -96,11 +113,17 @@ export default function EditProfile({user, setUser}) {
                         {/* 1. Avatar Section */}
                         <div className="flex flex-col items-center gap-4">
                             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
-                                <img 
-                                    src={avatarPreview} 
-                                    alt="Profile Preview" 
-                                    className="w-28 h-28 rounded-full object-cover border-4 border-[#2c2c2f] group-hover:opacity-50 transition-opacity"
-                                />
+                                {avatarPreview ? (
+                                    <img 
+                                        src={avatarPreview} 
+                                        alt="Profile Preview" 
+                                        className="w-28 h-28 rounded-full object-cover border-4 border-[#2c2c2f] group-hover:opacity-50 transition-opacity"
+                                    />
+                                ) : (
+                                    <div className={`w-28 h-28 rounded-full border-4 border-[#2c2c2f] flex items-center justify-center text-white font-bold text-4xl shadow-inner group-hover:opacity-50 transition-opacity ${getAvatarColor(fullname)}`}>
+                                        {fullname ? fullname.charAt(0).toUpperCase() : '#'}
+                                    </div>
+                                )}
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
