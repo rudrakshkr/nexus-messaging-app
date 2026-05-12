@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import NewChatModal from "./NewChatModal";
+import { Link } from "react-router";
 
 export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
     const token = localStorage.getItem("jwtToken");
@@ -184,13 +185,16 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
                             }`}
                         >
                             {/* Profile Option */}
-                            <button className="flex items-center gap-3 w-full p-2.5 hover:bg-white/5 rounded-lg text-[#e1e1e3] text-[14px] font-medium transition-colors">
+                            <Link 
+                                className="flex items-center gap-3 w-full p-2.5 hover:bg-white/5 rounded-lg text-[#e1e1e3] text-[14px] font-medium transition-colors"
+                                to="/profile"
+                            >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
                                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                     <circle cx="12" cy="7" r="4"></circle>
                                 </svg>
                                 Profile
-                            </button>
+                            </Link>
                             
                             {/* Divider */}
                             <div className="my-1.5 border-t border-[#2c2c2f]"></div>

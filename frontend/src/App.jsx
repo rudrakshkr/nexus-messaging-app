@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import LoginPage from './pages/Login';
 import SignupForm from './pages/SignIn';
 import ChatPage from './pages/ChatPage';
+import EditProfile from './components/EditProfile';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -33,6 +34,11 @@ function App() {
           <Route 
             path="/sign-up" 
             element={user.auth ? <Navigate to="/" /> : <SignupForm />} 
+          />
+
+          <Route 
+            path='/profile'
+            element={user.auth ? <EditProfile to="/profile" user={user} setUser={setUser}/> : <SignupForm />}
           />
 
           {/* Protected Route: Chat Page */}
