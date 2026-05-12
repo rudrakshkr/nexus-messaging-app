@@ -216,9 +216,7 @@ async function roomIdGet(req, res, next) {
             imageUrl: msg.imageUrl,
             roomId: roomId,
             senderEmail: msg.sender.email,
-            sender: {
-                fullname: msg.sender.fullname
-            },
+            fullname: msg.sender.fullname,
             avatar: msg.sender.avatar,
             time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', 
@@ -249,6 +247,68 @@ async function uploadImage(req, res, next) {
     }
 }
 
+async function createRoom(req, res, next) {
+    try {
+        const myUserId = parseInt(req.user.id);
+        const { participantIds, isGroup, subject } = req.body;
+
+        if (!participantIds || participantIds.length === 0) {
+            return res.status(400).json({ message: "No participants selected." });
+        }
+
+        const allUserIds = [...new Set([myUserId, ...participantIds])];
+
+        if (!isGroup && allUserIds.length === 2) {
+            const otherUserId = allUserIds.find(id => id !== myUserId);
+
+            const existingDirectRoom = await prisma.room.findFirst({
+                where: {
+                    type: 'DIRECT',
+                    AND: [
+                        { participants: { some: { userId: myUserId } } },
+                        { participants: { some: { userId: otherUserId } } }
+                    ]
+                },
+                include: {
+                    participants: { include: { user: { select: { id: true, fullname: true, email: true, avatar: true } } } },
+                    messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+                }
+            });
+
+            if (existingDirectRoom) {
+                return res.status(200).json({ room: existingDirectRoom, isNew: false });
+            }
+        }
+
+        const newRoom = await prisma.room.create({
+            data: {
+                type: isGroup ? 'GROUP' : 'DIRECT',
+                subject: isGroup ? subject : null,
+                participants: {
+                    create: allUserIds.map((id) => ({
+                        userId: id,
+                        role: (isGroup && id === myUserId) ? 'ADMIN' : 'MEMBER' 
+                    }))
+                }
+            },
+            include: {
+                participants: {
+                    include: {
+                        user: { select: { id: true, fullname: true, email: true, avatar: true } }
+                    }
+                },
+                messages: { orderBy: { createdAt: 'desc' }, take: 1 }
+            }
+        });
+
+        return res.status(201).json({ room: newRoom, isNew: true });
+
+    } catch (err) {
+        console.error("Couldn't create room", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 module.exports = {
     logInPost,
     verifyToken,
@@ -256,5 +316,6 @@ module.exports = {
     roomIdGet,
     roomsGet,
     uploadImage,
+    createRoom,
     usersGet
 }

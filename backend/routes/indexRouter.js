@@ -8,6 +8,7 @@ const {
     roomsGet,
     roomIdGet,
     uploadImage,
+    createRoom,
 } = require("../controllers/indexController");
 
 // Upload middleware
@@ -27,5 +28,6 @@ indexRouter.get('/api/getUsers', verifyToken, usersGet);
 indexRouter.get('/api/getRooms', verifyToken, roomsGet);
 indexRouter.get('/api/messages/:roomId', verifyToken, roomIdGet);
 indexRouter.post('/api/uploadImage', verifyToken, upload.single('image'), uploadImage);
+indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
 module.exports = indexRouter;
