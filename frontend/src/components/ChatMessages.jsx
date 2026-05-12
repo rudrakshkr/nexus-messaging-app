@@ -268,6 +268,7 @@ export default function ChatMessages({ activeRoom, roomId, user }) {
 
                 <div className="flex flex-col w-full">
                     {messages.map((msg, index) => {
+                        console.log(msg);
                         const isMyMessage = msg.senderEmail === myMail;
                         
                         const prevMsg = messages[index - 1];
@@ -299,7 +300,7 @@ export default function ChatMessages({ activeRoom, roomId, user }) {
                                         {isFirstInGroup && (
                                             <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                                                 <span className="text-[13px] font-semibold text-[#e1e1e3]">
-                                                    {isMyMessage ? 'You' : msg.sender?.fullname}
+                                                    {isMyMessage ? 'You' : msg.fullname}
                                                 </span>
                                                 <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
                                             </div>

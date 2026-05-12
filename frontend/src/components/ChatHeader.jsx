@@ -1,4 +1,21 @@
 export default function ChatHeader({user, activeRoom}) {
+    const getAvatarColor = (name) => {
+        if(!name) return 'bg[#8444f6]';
+
+        const colors = [
+            'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
+            'bg-[#ffab00]', 'bg-[#0052cc]', 'bg-[#e34935]',
+            'bg-[#17a2b8]', 'bg-[#e83e8c]', 'bg-[#f6c23e]'
+        ];
+
+        let hash = 0;
+        for(let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        return colors[Math.abs(hash) % colors.length];
+    }
+
     if(!activeRoom) return null;
 
     const isGroup = activeRoom.type === 'GROUP';
@@ -18,14 +35,22 @@ export default function ChatHeader({user, activeRoom}) {
         <div className="w-full flex items-center justify-between px-6 py-4 border-b border-[#2c2c2f] bg-[#0a0a0a]">
             <div className="flex items-center gap-4">
                 <div className="relative flex-shrink-0">
-                    <img 
-                        src={displayAvatar} 
-                        alt={displayName} 
-                        className="w-11 h-11 rounded-full object-cover"
-                    />
-                    {!isGroup && (
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
+                    {isGroup && !activeRoom.avatar ? (
+                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
+                            {displayName ? displayName.charAt(0).toUpperCase() : '#'}
+                        </div>
+                    ) : (
+                        <img 
+                            src={displayAvatar} 
+                            alt={displayName} 
+                            className="w-11 h-11 rounded-full object-cover"
+                        />
                     )}
+
+                    {!isGroup && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
+                    )}
+                    
                 </div>
                 
                 <div className="flex flex-col">

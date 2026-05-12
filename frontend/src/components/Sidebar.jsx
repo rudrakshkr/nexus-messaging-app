@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
+import NewChatModal from "./NewChatModal";
 
 export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
     const [rooms, setRooms] = useState([]);
-
-    const [loggedUser, setLoggedUser] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [errors, setErrors] = useState("");
@@ -15,6 +15,14 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
         e.preventDefault(e)
         localStorage.removeItem('jwtToken');
         setUser({auth: false, name: ''})
+    }
+
+    const handleRoomCreated = (response) => {
+        if(response.isNew) {
+            setRooms((prevRooms) => [response.room, ...prevRooms]);
+        }
+
+        onSelectRoom(response.room);
     }
 
     useEffect(() => {
@@ -42,13 +50,43 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
         fetchRooms();
     }, [token]);
 
+    const getAvatarColor = (name) => {
+        if(!name) return 'bg[#8444f6]';
+
+        const colors = [
+            'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
+            'bg-[#ffab00]', 'bg-[#0052cc]', 'bg-[#e34935]',
+            'bg-[#17a2b8]', 'bg-[#e83e8c]', 'bg-[#f6c23e]'
+        ];
+
+        let hash = 0;
+        for(let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        return colors[Math.abs(hash) % colors.length];
+    }
+
     return (
         <section className="flex flex-col flex-1 bg-[#161618] border-r border-[#2c2c2f]">
-            <div className="flex items-center gap-3 px-4 py-4">
-                <div className="w-8 h-8 bg-[#8444f6] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(132,68,246,0.4)] flex-shrink-0">
-                    N
+            <div className="flex items-center justify-between px-4 py-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#8444f6] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(132,68,246,0.4)] flex-shrink-0">
+                        N
+                    </div>
+                    <h2 className="text-lg font-bold text-[#e1e1e3] tracking-tight">Nexus</h2>
                 </div>
-                <h2 className="text-lg font-bold text-[#e1e1e3] tracking-tight">Nexus</h2>
+                
+                {/* NEW CHAT BUTTON */}
+                <button 
+                    onClick={() => setIsNewChatModalOpen(true)}
+                    className="text-[#8f8f96] hover:text-[#e1e1e3] transition-colors p-1 hover:bg-white/5 rounded-md"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 5v14"></path>
+                        <path d="M5 12h14"></path>
+                    </svg>
+                </button>
             </div>
 
             {/* Filter Toggle */}
@@ -94,13 +132,22 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
                                 onClick={() => onSelectRoom(room)}
                             >
                                 <div className="relative flex-shrink-0">
-                                    <img 
-                                        src={displayAvatar} 
-                                        alt={displayName} 
-                                        className="w-11 h-11 rounded-full object-cover"
-                                    />
-                                    {/* ToDo: Handle green dot for online status */}
-                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#0a0a0a] rounded-full"></span>
+                                    {isGroup && !room.avatar ? (
+                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
+                                            {displayName ? displayName.charAt(0).toUpperCase() : '#'}
+                                        </div>
+                                    ) : (
+                                        <img 
+                                            src={displayAvatar} 
+                                            alt={displayName} 
+                                            className="w-11 h-11 rounded-full object-cover"
+                                        />
+                                    )}
+
+                                    {!isGroup && (
+                                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
+                                    )}
+                                    
                                 </div>
 
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -209,6 +256,13 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
 
                 </div>
             </div>
+            <NewChatModal 
+                isOpen={isNewChatModalOpen}
+                onClose={() => setIsNewChatModalOpen(false)}
+                token={token}
+                currentUser={user}
+                onRoomCreated={handleRoomCreated}
+            />
         </section>
     )
 }
