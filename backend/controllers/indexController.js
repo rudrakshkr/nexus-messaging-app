@@ -291,6 +291,54 @@ async function editProfile(req, res, next) {
     }
 }
 
+async function editGroupAvatar(req, res, next) {
+    try {
+        const {roomId} = req.body;
+        if(!req.file) {
+            return res.status(400).json({message: "No file uploaded"});
+        }
+
+        await prisma.room.update({
+            where: {
+                id: parseInt(roomId)
+            },
+            data: {
+                avatar: req.file.path
+            }
+        })
+        
+        const uploadedUrl = req.file.path;
+
+        return res.status(200).json({imageUrl: uploadedUrl});
+
+    } catch(err) {
+        console.error("Couldn't edit group avatar", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+async function editGroupName(req, res, next) {
+    try {
+        const {roomId, subject} = req.body;
+
+        await prisma.room.update({
+            where: {
+                id: parseInt(roomId)
+            },
+            data: {
+                subject: subject
+            }
+        })
+
+        return res.status(200).json({ 
+            message: "Group name updated successfully"
+        });
+    } catch(err) {
+        console.error("Couldn't edit group name", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 async function createRoom(req, res, next) {
     try {
         const myUserId = parseInt(req.user.id);
@@ -362,5 +410,7 @@ module.exports = {
     uploadImage,
     createRoom,
     editProfile,
+    editGroupAvatar,
+    editGroupName,
     usersGet
 }
