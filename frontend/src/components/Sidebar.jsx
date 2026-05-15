@@ -2,12 +2,10 @@ import { useEffect, useState } from "react"
 import NewChatModal from "./NewChatModal";
 import { Link } from "react-router";
 
-export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
+export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms, setRooms}) {
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
-
-    const [rooms, setRooms] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [errors, setErrors] = useState("");
@@ -25,31 +23,6 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
 
         onSelectRoom(response.room);
     }
-
-    useEffect(() => {
-        const fetchRooms = async () => {
-            try {
-                const res = await fetch(`/api/getRooms`, {
-                    method: 'GET',
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    }
-                })
-
-                if(!res.ok) throw new Error("Failed to fetch rooms.");
-                const data = await res.json();
-
-                setRooms(data.rooms);
-            } catch(err) {
-                console.error("Fetch error: ", err);
-                setErrors("Failed to load page data.");
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchRooms();
-    }, [token]);
 
     const getAvatarColor = (name) => {
         if(!name) return 'bg[#8444f6]';
@@ -144,7 +117,7 @@ export default function Sidebar({user, setUser, onSelectRoom, activeRoom}) {
                                             className="w-11 h-11 rounded-full object-cover"
                                         />
                                     )}
-                                    
+
                                     {!isGroup && (
                                         <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
                                     )}

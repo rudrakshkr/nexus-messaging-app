@@ -1,4 +1,4 @@
-export default function ChatHeader({user, activeRoom}) {
+export default function ChatHeader({user, activeRoom, setIsDrawerOpen}) {
     const getAvatarColor = (name) => {
         if(!name) return 'bg[#8444f6]';
 
@@ -33,25 +33,22 @@ export default function ChatHeader({user, activeRoom}) {
 
     return (
         <div className="w-full flex items-center justify-between px-6 py-4 border-b border-[#2c2c2f] bg-[#0a0a0a]">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 cursor-pointer" onClick={() => {
+                if(activeRoom.type === 'GROUP') {
+                    setIsDrawerOpen(true);
+                }
+            }}>
                 <div className="relative flex-shrink-0">
-                    {isGroup && !activeRoom.avatar ? (
+                    {!displayAvatar ? (
                         <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
                             {displayName ? displayName.charAt(0).toUpperCase() : '#'}
                         </div>
                     ) : (
-                        !otherParticipant.avatar ? (
-                            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
-                                {displayName ? displayName.charAt(0).toUpperCase() : '#'}
-                            </div>
-                        ) :
-                        (
-                            <img 
-                                src={displayAvatar} 
-                                alt={displayName} 
-                                className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}
-                            />
-                        )
+                        <img 
+                            src={displayAvatar} 
+                            alt={displayName} 
+                            className="w-11 h-11 rounded-full object-cover"
+                        />
                     )}
 
                     {!isGroup && (

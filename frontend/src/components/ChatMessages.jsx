@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react"
 import { io } from "socket.io-client";
 import EmojiPicker from "emoji-picker-react";
+import GroupInfoDrawer from "./GroupInfoDrawer";
 
 const backend_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 const socket = io(backend_url);
 
-export default function ChatMessages({ activeRoom, roomId, user }) {
+export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, roomId, user, isDrawerOpen, setIsDrawerOpen }) {
     const token = localStorage.getItem("jwtToken");
 
     const [messages, setMessages] = useState([]);
@@ -139,6 +140,19 @@ export default function ChatMessages({ activeRoom, roomId, user }) {
         socket.on("receiveMessage", handleIncomingMessage);
         return () => socket.off("receiveMessage", handleIncomingMessage);
     }, [roomId]);
+
+    const handleUpdateRoomInfo = (roomId, updatedData) => {
+        setActiveRoom(prev => {
+            if (String(prev?.id) === String(roomId)) {
+                return { ...prev, ...updatedData };
+            }
+            return prev;
+        });
+        
+        setRooms(prevRooms => 
+            prevRooms.map(r => String(r.id) === String(roomId) ? { ...r, ...updatedData } : r)
+        );
+    };
 
     const handleImageSelect = (e) => {
         const file = e.target.files[0];
@@ -465,6 +479,13 @@ export default function ChatMessages({ activeRoom, roomId, user }) {
                     />
                 </div>
             )}
+            <GroupInfoDrawer 
+                isOpen={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                room={activeRoom}
+                currentUser={user}
+                onUpdateRoomInfo={handleUpdateRoomInfo}
+            />
         </div>
     )
 }
