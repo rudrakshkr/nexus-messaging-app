@@ -9,8 +9,10 @@ const {
     roomIdGet,
     uploadImage,
     editProfile,
-    editGroupAvatar,
-    editGroupName,
+    updateGroupAvatar,
+    updateGroupName,
+    updateGroupAdmin,
+    groupUserKick,
     createRoom,
 } = require("../controllers/indexController");
 
@@ -32,8 +34,10 @@ indexRouter.get('/api/getRooms', verifyToken, roomsGet);
 indexRouter.get('/api/messages/:roomId', verifyToken, roomIdGet);
 indexRouter.post('/api/uploadImage', verifyToken, upload.single('image'), uploadImage);
 indexRouter.post('/api/editProfile', verifyToken, upload.single('avatar'), editProfile);
-indexRouter.put('/api/updateGroupAvatar', verifyToken, upload.single('groupAvatar'), editGroupAvatar);
-indexRouter.put('/api/updateGroupName', verifyToken, editGroupName);
+indexRouter.put('/api/updateGroupAvatar', verifyToken, upload.single('groupAvatar'), updateGroupAvatar);
+indexRouter.put('/api/updateGroupName', verifyToken, updateGroupName);
+indexRouter.put('/api/updateGroupAdmin', verifyToken, updateGroupAdmin);
+indexRouter.delete('/api/kickGroupUser', verifyToken, groupUserKick);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
 module.exports = indexRouter;

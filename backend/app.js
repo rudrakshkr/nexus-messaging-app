@@ -81,6 +81,7 @@ io.on("connection", (socket) => {
         text: savedMessage.text,
         imageUrl: savedMessage.imageUrl,
         senderEmail: senderEmail,
+        fullname: sender.fullname,
         avatar: sender.avatar,
         tempId: tempId,
         roomId: roomId,

@@ -291,7 +291,7 @@ async function editProfile(req, res, next) {
     }
 }
 
-async function editGroupAvatar(req, res, next) {
+async function updateGroupAvatar(req, res, next) {
     try {
         const {roomId} = req.body;
         if(!req.file) {
@@ -317,7 +317,7 @@ async function editGroupAvatar(req, res, next) {
     }
 }
 
-async function editGroupName(req, res, next) {
+async function updateGroupName(req, res, next) {
     try {
         const {roomId, subject} = req.body;
 
@@ -335,6 +335,57 @@ async function editGroupName(req, res, next) {
         });
     } catch(err) {
         console.error("Couldn't edit group name", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+async function updateGroupAdmin(req, res, next) {
+    try {
+        const {roomId, userId, role} = req.body;
+
+        if (!roomId || !userId || !role) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        await prisma.roomParticipant.updateMany({
+            where: {
+                userId: userId,
+                roomId: parseInt(roomId)
+            },
+            data: {
+                role: role
+            }
+        })
+
+        return res.status(200).json({
+            message: "Role updated successfully"
+        })
+    } catch(err) {
+        console.error("Couldn't update role", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+async function groupUserKick(req, res, next) {
+    try {
+        const {roomId, userId} = req.body;
+
+        if (!roomId || !userId) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        await prisma.roomParticipant.deleteMany({
+            where: {
+                userId: userId,
+                roomId: parseInt(roomId)
+            }
+        })
+
+        return res.status(200).json({
+            message: "User removed successfully"
+        })
+    } catch(err) {
+        console.error("Couldn't update role", err);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 }
@@ -410,7 +461,9 @@ module.exports = {
     uploadImage,
     createRoom,
     editProfile,
-    editGroupAvatar,
-    editGroupName,
+    updateGroupAvatar,
+    updateGroupName,
+    updateGroupAdmin,
+    groupUserKick,
     usersGet
 }
