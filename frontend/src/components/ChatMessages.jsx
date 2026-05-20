@@ -216,6 +216,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             text: textToSend,
             imageUrl: previewImage,
             senderEmail: myMail,
+            fullname: displayName,
             avatar: userData?.avatar,
             time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}),
             isPending: true,
@@ -223,6 +224,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
 
         setMessages((prev) => [...prev, optimisticMsg]);
+        console.log(optimisticMsg)
 
         let finalImageUrl = null;
 
@@ -282,7 +284,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
 
                 <div className="flex flex-col w-full">
                     {messages.map((msg, index) => {
-                        console.log(msg);
                         const isMyMessage = msg.senderEmail === myMail;
                         
                         const prevMsg = messages[index - 1];

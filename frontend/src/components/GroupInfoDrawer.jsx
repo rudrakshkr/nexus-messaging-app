@@ -10,6 +10,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
     const [tempGroupName, setTempGroupName] = useState(room?.subject || "");
     const [isLoadingName, setIsLoadingName] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+    const [updatingUserId, setUpdatingUserId] = useState(null);
     const [notification, setNotification] = useState("");
 
     const nameInputRef = useRef(null);
@@ -121,6 +122,83 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
             setIsLoadingName(false);
         }
     }
+
+    const handleRoleChange = async (targetUserId, newRole) => {
+        setUpdatingUserId(targetUserId);
+        try {
+            const res = await fetch('/api/updateGroupAdmin', {
+                method: "PUT",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}` 
+                },
+                body: JSON.stringify({
+                    roomId: room.id,
+                    userId: targetUserId,
+                    role: newRole
+                })
+            });
+
+            if(res.ok) {
+                showToast(newRole === 'ADMIN' ? "Promoted to Admin!" : "Admin rights removed");
+
+                const updatedParticipants = room.participants.map(p => 
+                    p.user.id === targetUserId ? { ...p, role: newRole } : p
+                );
+
+                if(onUpdateRoomInfo) {
+                    onUpdateRoomInfo(room.id, { participants: updatedParticipants });
+                }
+            } else {
+                console.error("Failed to update role");
+                showToast("Failed to update role");
+            }
+        } catch(err) {
+            console.error("Network error while updating role:", err);
+            showToast("Network error occurred");
+        }
+        finally{
+            setUpdatingUserId(null);
+        }
+    };
+
+    const handleUserKick = async (targetUserId) => {
+        const isConfirmed = window.confirm("Are you sure you want to kick this user");
+        if(!isConfirmed) return;
+
+        try {
+            const res = await fetch('/api/kickGroupUser', {
+                method: "DELETE",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}` 
+                },
+                body: JSON.stringify({
+                    roomId: room.id,
+                    userId: targetUserId
+                })
+            })
+
+            if(res.ok) {
+                showToast("Kicked out user from the group!");
+
+                const updatedParticipants = room.participants.filter(p => 
+                    p.user.id !== targetUserId
+                )
+
+                if(onUpdateRoomInfo) {
+                    onUpdateRoomInfo(room.id, { participants: updatedParticipants });
+                }
+            } 
+            else {
+                console.error("Failed to kick the user");
+                showToast("Failed to kick the user");
+            }
+        } catch(err) {
+            console.error("Network error while kicking out the user:", err);
+            showToast("Network error occurred");
+        }
+    }   
 
     const getAvatarColor = (name) => {
         if(!name) return 'bg[#8444f6]';
@@ -349,23 +427,46 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
                                     </div>
 
                                     {/* Admin Action Buttons  */}
-                                    {iAmAdmin && !isAdmin && !isMe && (
+                                    {iAmAdmin && !isMe && (
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[#161618] shadow-[-10px_0_10px_#161618] absolute right-2">
-                                            
-                                            {/* Promote to Admin Button */}
                                             <button 
-                                                title="Make Admin"
-                                                className="p-2 text-[#8f8f96] hover:text-[#00d97e] hover:bg-[#00d97e]/10 rounded-lg transition-colors"
+                                                onClick={() => handleRoleChange(member.id, isAdmin ? 'MEMBER' : 'ADMIN')}
+                                                disabled={updatingUserId === member.id}
+                                                title={isAdmin ? "Remove Admin" : "Make Admin"}
+                                                className={`p-2 flex items-center justify-center rounded-lg transition-colors ${
+                                                    isAdmin 
+                                                        ? 'text-[#b488f8] hover:text-[#e1e1e3] hover:bg-white/10' // Admin styling
+                                                        : 'text-[#8f8f96] hover:text-[#00d97e] hover:bg-[#00d97e]/10' // Normal styling
+                                                } ${updatingUserId === member.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                                                </svg>
+                                                {updatingUserId === member.id ? (
+                                                    <div className="flex-shrink-0">
+                                                        <TailSpin
+                                                            visible={true}
+                                                            height="18"
+                                                            width="18"
+                                                            color="#8444f6"
+                                                            ariaLabel="tail-spin-loading"
+                                                            radius="1"
+                                                        />
+                                                    </div>
+                                                ) : isAdmin ? (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                        <line x1="9" y1="12" x2="15" y2="12"></line>
+                                                    </svg>
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                    </svg>
+                                                )}
                                             </button>
 
                                             {/* Kick User Button */}
                                             <button 
                                                 title="Remove User"
                                                 className="p-2 text-[#8f8f96] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                onClick={() => handleUserKick(member.id)}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                     <path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"></path>
