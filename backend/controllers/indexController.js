@@ -390,6 +390,49 @@ async function groupUserKick(req, res, next) {
     }
 }
 
+async function groupUserAdd(req, res, next) {
+    try {
+        const {participantIds, roomId} = req.body;
+
+        if(!participantIds) {
+            return res.status(400).json({message: "No participants selected."});
+        }
+
+        const room = await prisma.room.update({
+            where: {
+                id: parseInt(roomId)
+            },
+            data: {
+                participants: {
+                    create: participantIds.map((id) => ({
+                        userId: parseInt(id),
+                        role: "MEMBER"
+                    }))
+                }
+            },
+            include: {
+                participants: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullname: true,
+                                email: true,
+                                avatar: true
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        return res.status(201).json({ room: room, isNew: false });
+    } catch(err) {
+        console.error("Couldn't add members", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 async function createRoom(req, res, next) {
     try {
         const myUserId = parseInt(req.user.id);
@@ -465,5 +508,6 @@ module.exports = {
     updateGroupName,
     updateGroupAdmin,
     groupUserKick,
+    groupUserAdd,
     usersGet
 }

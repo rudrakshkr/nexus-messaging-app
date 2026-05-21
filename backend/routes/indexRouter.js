@@ -13,6 +13,7 @@ const {
     updateGroupName,
     updateGroupAdmin,
     groupUserKick,
+    groupUserAdd,
     createRoom,
 } = require("../controllers/indexController");
 
@@ -38,6 +39,7 @@ indexRouter.put('/api/updateGroupAvatar', verifyToken, upload.single('groupAvata
 indexRouter.put('/api/updateGroupName', verifyToken, updateGroupName);
 indexRouter.put('/api/updateGroupAdmin', verifyToken, updateGroupAdmin);
 indexRouter.delete('/api/kickGroupUser', verifyToken, groupUserKick);
+indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
 module.exports = indexRouter;
