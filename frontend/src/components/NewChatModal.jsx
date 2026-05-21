@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
 
-export default function NewChatModal({isOpen, onClose, token, currentUser, onRoomCreated}) {
+export default function NewChatModal({isOpen, onClose, token, addMember, currentUser, onRoomCreated, activeRoom, onSelectRoom}) {
     const [users, setUsers] = useState([]);
     const [selectedUserIds, setSelectedUserIds] = useState([]);
     const [groupName, setGroupName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [notification, setNotification] = useState("");
+
+    // Toast notification
+    const showToast = (message) => {
+        setNotification(message);
+        setTimeout(() => {
+            setNotification("");
+        }, 3000);
+    };
 
     // Fetch users when modal opens
     useEffect(() => {
@@ -40,34 +49,66 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
 
     const handleSubmit = async () => {
         if(selectedUserIds.length === 0) return;
-        if(selectedUserIds.length > 1 && !groupName.trim()) {
-            return alert("Please enter a group name!");
-        }
-
+        
         setIsLoading(true);
         
         try {
-            const res = await fetch('/api/createRoom', {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    participantIds: selectedUserIds,
-                    isGroup: isGroup,
-                    subject: isGroup ? groupName : null
-                })
-            });
+            // -------------------------------------
+            // ADDING MEMBERS TO EXISTING GROUP
+            // -------------------------------------
+            if (addMember && activeRoom) {
+                const res = await fetch('/api/addGroupUser', {
+                    method: "POST", 
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        roomId: activeRoom.id,
+                        participantIds: selectedUserIds
+                    })
+                });
 
-            if(res.ok) {
-                const data = await res.json();
-                
-                onRoomCreated(data);
-                
-                onClose();
-            } else {
-                console.error("Failed to create room");
+                if(res.ok) {
+                    const updatedRoom = await res.json();
+                    showToast("User added to group!");
+                    onRoomCreated(updatedRoom)
+                    
+                    setSelectedUserIds([]);
+                    
+                } else {
+                    console.error("Failed to add members");
+                }
+            } 
+            // --------------------------------
+            // CREATING A BRAND NEW CHAT/GROUP
+            // --------------------------------
+            else {
+                if(selectedUserIds.length > 1 && !groupName.trim()) {
+                    setIsLoading(false);
+                    return alert("Please enter a group name!");
+                }
+
+                const res = await fetch('/api/createRoom', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        participantIds: selectedUserIds,
+                        isGroup: isGroup,
+                        subject: isGroup ? groupName : null
+                    })
+                });
+
+                if(res.ok) {
+                    const data = await res.json();
+                    onRoomCreated(data);
+                    onClose();
+                } else {
+                    console.error("Failed to create room");
+                }
             }
         } catch (error) {
             console.error("Network error:", error);
@@ -97,12 +138,28 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 animate-in fade-in duration-200 p-4">
+            {/* TOAST NOTIFICATION  */}
+            <div 
+                className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 bg-[#00d97e]/15 border border-[#00d97e]/30 backdrop-blur-md text-[#00d97e] px-4 py-2.5 rounded-xl shadow-[0_10px_30px_rgba(0,217,126,0.15)] transition-all duration-300 ease-out
+                ${notification 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-6 pointer-events-none' 
+                }`}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span className="text-[14px] font-semibold tracking-wide">
+                    {notification}
+                </span>
+            </div>
             <div className="bg-[#161618] border border-[#2c2c2f] w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-[#2c2c2f]">
                     <h2 className="text-lg font-bold text-[#e1e1e3]">
-                        {isGroup ? "Create New Group" : "New Conversation"}
+                        {addMember ? "Add People To Group": isGroup ? "Create New Group" : "New Conversation"}
                     </h2>
                     <button onClick={onClose} className="text-[#8f8f96] hover:text-white transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -114,7 +171,7 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
 
                 {/* Body Content */}
                 <div className="p-5 flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
-                    {isGroup && (
+                    {(isGroup & !addMember) ? (
                         <div className="animate-in slide-in-from-top-2 fade-in">
                             <label className="text-[13px] font-medium text-[#8f8f96] mb-1.5 block">Group Name</label>
                             <input 
@@ -125,45 +182,63 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
                                 className="w-full bg-[#0a0a0a] border border-[#2c2c2f] rounded-lg px-4 py-2.5 text-[#e1e1e3] text-[14px] outline-none focus:border-[#8444f6] transition-colors"
                             />
                         </div>
+                    ): (
+                        <div className="mb-4">
+                            <p className="text-[12px] font-bold text-[#8f8f96] uppercase tracking-wider mb-1">
+                                Add New Members
+                            </p>
+                            <div className="w-full h-[2px] bg-[#2c2c2f] rounded-full"></div>
+                        </div>
                     )}
 
                     <div>
                         <label className="text-[13px] font-medium text-[#8f8f96] mb-2 block">Select Participants</label>
                         <div className="flex flex-col gap-1">
-                            {users.map(u => (
-                                <div 
-                                    key={u.id}
-                                    onClick={() => toggleUser(u.id)}
-                                    className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors ${
-                                        selectedUserIds.includes(u.id) ? 'bg-[#8444f6]/10 border border-[#8444f6]/30' : 'hover:bg-white/5 border border-transparent'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {u.avatar ? (
-                                            <img 
-                                                src={u.avatar} 
-                                                alt={u.fullname} 
-                                                className="w-9 h-9 rounded-full object-cover"
-                                            />
+                            {users.map(u => {
+                                const isAlreadyMember = addMember && activeRoom?.participants?.some(p => p.user.id === u.id);
+                                return (
+                                    <div 
+                                        key={u.id}
+                                        onClick={() => !isAlreadyMember && toggleUser(u.id)}
+                                        className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
+                                            isAlreadyMember 
+                                                ? 'opacity-40 cursor-not-allowed bg-[#161618]'
+                                                : selectedUserIds.includes(u.id) 
+                                                    ? 'bg-[#8444f6]/10 border border-[#8444f6]/30 cursor-pointer' 
+                                                    : 'hover:bg-white/5 border border-transparent cursor-pointer'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {u.avatar ? (
+                                                <img 
+                                                    src={u.avatar} 
+                                                    alt={u.fullname} 
+                                                    className="w-9 h-9 rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[14px] shadow-inner ${getAvatarColor(u.fullname)}`}>
+                                                    {u.fullname ? u.fullname.charAt(0).toUpperCase() : '#'}
+                                                </div>
+                                            )}
+                                            <span className="text-[14px] font-medium text-[#e1e1e3]">{u.fullname}</span>
+                                        </div>
+                                        
+                                        {isAlreadyMember ? (
+                                            <span className="text-[11px] font-bold text-[#8f8f96] uppercase tracking-wide px-2">Joined</span>
                                         ) : (
-                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[14px] shadow-inner ${getAvatarColor(u.fullname)}`}>
-                                                {u.fullname ? u.fullname.charAt(0).toUpperCase() : '#'}
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
+                                                selectedUserIds.includes(u.id) ? 'bg-[#8444f6] border-[#8444f6]' : 'border-[#2c2c2f] bg-[#0a0a0a]'
+                                            }`}>
+                                                {selectedUserIds.includes(u.id) && (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                    </svg>
+                                                )}
                                             </div>
                                         )}
-                                        <span className="text-[14px] font-medium text-[#e1e1e3]">{u.fullname}</span>
                                     </div>
-                                    
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                                        selectedUserIds.includes(u.id) ? 'bg-[#8444f6] border-[#8444f6]' : 'border-[#2c2c2f] bg-[#0a0a0a]'
-                                    }`}>
-                                        {selectedUserIds.includes(u.id) && (
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                            </svg>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -181,7 +256,7 @@ export default function NewChatModal({isOpen, onClose, token, currentUser, onRoo
                         disabled={selectedUserIds.length === 0 || isLoading}
                         className="px-4 py-2 rounded-lg text-[14px] font-medium bg-[#8444f6] text-white hover:bg-[#7133d4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isLoading ? "Creating..." : (isGroup ? "Create Group" : "Start Chat")}
+                        {(isLoading & !addMember) ? "Creating..." : (isLoading & addMember) ? "Adding..." : addMember ? "Add members" : (isGroup ? "Create Group" : "Start Chat" )}
                     </button>
                 </div>
 

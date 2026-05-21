@@ -1,4 +1,17 @@
-export default function ChatHeader({user, activeRoom, setIsDrawerOpen}) {
+import { useState } from "react";
+import NewChatModal from "./NewChatModal";
+export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom}) {
+    const token = localStorage.getItem("jwtToken");
+    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+
+    const handleRoomCreated = (response) => {
+        if(response.isNew) {
+            setRooms((prevRooms) => [response.room, ...prevRooms]);
+        }
+
+        onSelectRoom(response.room);
+    }
+
     const getAvatarColor = (name) => {
         if(!name) return 'bg[#8444f6]';
 
@@ -21,7 +34,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen}) {
     const isGroup = activeRoom.type === 'GROUP';
 
     const otherParticipant = !isGroup
-        ? activeRoom.participants.find(p => p.user.email !== user.email)?.user
+        ? activeRoom.participants?.find(p => p.user.email !== user.email)?.user
         : null;
 
     const displayName = isGroup ? activeRoom.subject : otherParticipant?.fullname;
@@ -32,7 +45,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen}) {
         : "Active now";
 
     return (
-        <div className="w-full flex items-center justify-between px-6 py-4 border-b border-[#2c2c2f] bg-[#0a0a0a]">
+        <section className="w-full flex items-center justify-between px-6 py-4 border-b border-[#2c2c2f] bg-[#0a0a0a]">
             <div className="flex items-center gap-4 cursor-pointer" onClick={() => {
                 if(activeRoom.type === 'GROUP') {
                     setIsDrawerOpen(true);
@@ -64,6 +77,27 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen}) {
             </div>
 
             <div className="flex items-center gap-5 text-[#8f8f96]">
+                {isGroup && (
+                    <button 
+                        className="text-[#8e8e95] hover:text-[#e1e1e3] transition-colors" title="Add members"
+                        onClick={() => setIsNewChatModalOpen(true)}
+                    >
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            width="20" 
+                            height="20" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                        >
+                            <g id="SVGRepo_iconCarrier"> 
+                                <path d="M3 19C3.69137 16.6928 5.46998 16 9.5 16C13.53 16 15.3086 16.6928 16 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></path> 
+                                <path d="M13 9.5C13 11.433 11.433 13 9.5 13C7.567 13 6 11.433 6 9.5C6 7.567 7.567 6 9.5 6C11.433 6 13 7.567 13 9.5Z" stroke="currentColor" strokeWidth="2"></path> 
+                                <path d="M15 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path> 
+                                <path d="M18 3L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path> 
+                            </g>
+                        </svg>
+                    </button>
+                )}
                 {/* Phone Icon */}
                 <a className="hover:text-[#e1e1e3] transition-colors" href="tel:+1555555555">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -106,6 +140,15 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen}) {
                     </svg>
                 </button>
             </div>
-        </div>
+            <NewChatModal 
+                isOpen={isNewChatModalOpen}
+                onClose={() => setIsNewChatModalOpen(false)}
+                token={token}
+                currentUser={user}
+                addMember={true}
+                onRoomCreated={handleRoomCreated}
+                activeRoom={activeRoom}
+            />
+        </section>
     )
 }

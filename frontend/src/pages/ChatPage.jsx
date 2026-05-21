@@ -54,6 +54,8 @@ export default function ChatPage({user, setUser}) {
                             user={user}
                             activeRoom={activeRoom}
                             setIsDrawerOpen={setIsDrawerOpen}
+                            setRooms={setRooms}
+                            onSelectRoom={setActiveRoom}
                         />
                         
                         {/* Chat Messages */}
