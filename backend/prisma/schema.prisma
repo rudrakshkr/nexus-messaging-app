@@ -17,6 +17,11 @@ enum Role {
   MEMBER
 }
 
+enum MessageType {
+  USER
+  SYSTEM
+}
+
 // Users Table
 model Users {
   id       Int    @id @default(autoincrement())
@@ -68,10 +73,13 @@ model Message {
   id Int    @id @default(autoincrement())
   text String @db.Text
   imageUrl String? @db.Text
+
+  type MessageType @default(USER)
+
   createdAt DateTime @default(now())
 
   // Relation to user
-  sender Users @relation(fields: [senderId], references: [id])
+  sender Users? @relation(fields: [senderId], references: [id])
   senderId Int
 
   // Relation to room

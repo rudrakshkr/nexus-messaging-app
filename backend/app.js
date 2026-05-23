@@ -28,12 +28,20 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   },
 });
+
+app.set("io", io);
+
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
+  socket.on("joinRoom", (roomId) => {
+    socket.join(`room_${roomId}`);
+    console.log(`User ${socket.id} joined live room ${roomId}`);
+  })
+
   // Users joining room after their own room id
   socket.on("setup", async (myUserId) => {
-    socket.join(myUserId.toString());
+    socket.join(`user_${myUserId}`);
     
     try {
       const userRooms = await prisma.roomParticipant.findMany({
@@ -42,7 +50,7 @@ io.on("connection", (socket) => {
       })
 
       userRooms.forEach((participant) => {
-        socket.join(participant.roomId.toString());
+        socket.join(`room_${participant.roomId}`);
       })
 
       console.log(`User ${myUserId} joined personal room and ${userRooms.length} active chats.`);
@@ -91,7 +99,7 @@ io.on("connection", (socket) => {
       }
 
       // Broadcast to entire room at once
-      io.to(roomId.toString()).emit("receiveMessage", formattedMessage);
+      io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
 
     } catch(err) {
       console.error("Error saving/sending message:", err);

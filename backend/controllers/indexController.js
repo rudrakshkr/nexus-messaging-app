@@ -214,6 +214,7 @@ async function roomIdGet(req, res, next) {
             id: msg.id,
             text: msg.text,
             imageUrl: msg.imageUrl,
+            type: msg.type,
             roomId: roomId,
             senderEmail: msg.sender.email,
             fullname: msg.sender.fullname,
@@ -306,6 +307,30 @@ async function updateGroupAvatar(req, res, next) {
                 avatar: req.file.path
             }
         })
+
+        const savedMessage = await prisma.message.create({
+            data: {
+                text: `Group avatar was changed.`,
+                type: 'SYSTEM',
+                roomId: parseInt(roomId),
+                senderId: req.user.id
+            }
+        });
+
+        const formattedMessage = {
+            id: savedMessage.id,
+            text: savedMessage.text,
+            type: savedMessage.type,
+            roomId: savedMessage.roomId,
+            time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+        };
+
+        const io = req.app.get("io");
+        if(io) {
+            io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+        }
         
         const uploadedUrl = req.file.path;
 
@@ -329,6 +354,30 @@ async function updateGroupName(req, res, next) {
                 subject: subject
             }
         })
+
+        const savedMessage = await prisma.message.create({
+            data: {
+                text: `Group name updated to "${subject}"`,
+                type: 'SYSTEM',
+                roomId: roomId,
+                senderId: req.user.id
+            }
+        });
+
+        const formattedMessage = {
+            id: savedMessage.id,
+            text: savedMessage.text,
+            type: savedMessage.type,
+            roomId: savedMessage.roomId,
+            time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+        };
+
+        const io = req.app.get("io");
+        if(io) {
+            io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+        }
 
         return res.status(200).json({ 
             message: "Group name updated successfully"
@@ -357,6 +406,43 @@ async function updateGroupAdmin(req, res, next) {
             }
         })
 
+        const targetUser = await prisma.users.findUnique({
+            where: {
+                id: userId
+            },
+            select: {
+                fullname: true
+            }
+        });
+
+        const actionText = role === "ADMIN"
+            ? `${targetUser.fullname} was promoted to Admin.` 
+            : `${targetUser.fullname} is no longer an Admin.`;
+
+        const savedMessage = await prisma.message.create({
+            data: {
+                text: actionText,
+                type: 'SYSTEM',
+                roomId: roomId,
+                senderId: req.user.id
+            }
+        });
+
+        const formattedMessage = {
+            id: savedMessage.id,
+            text: savedMessage.text,
+            type: savedMessage.type,
+            roomId: savedMessage.roomId,
+            time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+        };
+
+        const io = req.app.get("io");
+        if(io) {
+            io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+        }
+
         return res.status(200).json({
             message: "Role updated successfully"
         })
@@ -374,12 +460,47 @@ async function groupUserKick(req, res, next) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
+        const kickedUser = await prisma.users.findUnique({
+            where: {
+                id: userId
+            },
+            select: {
+                fullname: true
+            }
+        });
+
         await prisma.roomParticipant.deleteMany({
             where: {
                 userId: userId,
                 roomId: parseInt(roomId)
             }
         })
+
+        const savedMessage = await prisma.message.create({
+            data: {
+                text: `${kickedUser.fullname} was removed from the group.`,
+                type: 'SYSTEM',
+                roomId: parseInt(roomId),
+                senderId: req.user.id
+            }
+        });
+
+        const formattedMessage = {
+            id: savedMessage.id,
+            text: savedMessage.text,
+            type: savedMessage.type,
+            roomId: savedMessage.roomId,
+            time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+        };
+
+        const io = req.app.get("io");
+        if(io) {
+            io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+
+            io.to(`user_${userId}`).emit("kickedFromGroup", {roomId});
+        }
 
         return res.status(200).json({
             message: "User removed successfully"
@@ -393,10 +514,24 @@ async function groupUserKick(req, res, next) {
 async function groupUserAdd(req, res, next) {
     try {
         const {participantIds, roomId} = req.body;
+        const userId = req.user.id;
 
-        if(!participantIds) {
-            return res.status(400).json({message: "No participants selected."});
+        if(!participantIds || participantIds.length === 0) {
+            return res.status(400).json({message: "No participants selected"});
         }
+
+        const parsedParticipantIds = participantIds.map(id => parseInt(id));
+        const addedUsers = await prisma.users.findMany({
+            where: {
+                id: {
+                    in: parsedParticipantIds
+                }
+            },
+            select: {
+                fullname: true
+            }
+        });
+        const addedNames = addedUsers.map(u => u.fullname).join(", ");
 
         const room = await prisma.room.update({
             where: {
@@ -404,8 +539,8 @@ async function groupUserAdd(req, res, next) {
             },
             data: {
                 participants: {
-                    create: participantIds.map((id) => ({
-                        userId: parseInt(id),
+                    create: parsedParticipantIds.map((id) => ({
+                        userId: id,
                         role: "MEMBER"
                     }))
                 }
@@ -424,7 +559,40 @@ async function groupUserAdd(req, res, next) {
                     }
                 }
             }
+        });
+
+        // Create system message in database
+        const savedMessage = await prisma.message.create({
+            data: {
+                text: `${addedNames} joined the group.`,
+                type: 'SYSTEM',
+                roomId: parseInt(roomId),
+                senderId: userId
+            }
         })
+
+        const formattedMessage = {
+            id: savedMessage.id,
+            text: savedMessage.text,
+            type: savedMessage.type,
+            roomId: savedMessage.roomId,
+            time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            })
+        };
+
+        const io = req.app.get("io");
+        if(io) {
+            io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+
+            parsedParticipantIds.forEach(id => {
+                io.to(`user_${id}`).emit("addedToGroup", {
+                    roomId: roomId,
+                    message: formattedMessage,
+                    roomData: room
+                })
+            })
+        }
 
         return res.status(201).json({ room: room, isNew: false });
     } catch(err) {
