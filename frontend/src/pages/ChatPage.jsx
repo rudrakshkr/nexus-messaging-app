@@ -2,6 +2,7 @@ import Sidebar from "../components/Sidebar"
 import ChatHeader from "../components/ChatHeader"
 import ChatMessages from "../components/ChatMessages"
 import { useState, useEffect } from "react"
+import { socket } from "../socket"
 
 export default function ChatPage({user, setUser}) {
     const token = localStorage.getItem("jwtToken");
@@ -10,6 +11,45 @@ export default function ChatPage({user, setUser}) {
 
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user || !user.id) return;
+
+        const handleSetup = () => socket.emit("setup", user.id);
+        if (socket.connected) handleSetup();
+        socket.on("connect", handleSetup);
+
+        const handleAddedToGroup = (data) => {
+            socket.emit("joinRoom", data.roomId);
+            
+            setRooms((prevRooms) => {
+                const exists = prevRooms.find(r => String(r.id) === String(data.roomData.id));
+                if (!exists) return [data.roomData, ...prevRooms];
+                return prevRooms;
+            });
+        };
+
+        const handleKickedFromGroup = (data) => {
+            setRooms((prevRooms) => prevRooms.filter(r => String(r.id) !== String(data.roomId)));
+            
+            setActiveRoom(prevActive => {
+                if (prevActive && String(prevActive.id) === String(data.roomId)) {
+                    setIsDrawerOpen(false);
+                    return null;
+                }
+                return prevActive;
+            });
+        };
+
+        socket.on("addedToGroup", handleAddedToGroup);
+        socket.on("kickedFromGroup", handleKickedFromGroup);
+
+        return () => {
+            socket.off("connect", handleSetup);
+            socket.off("addedToGroup", handleAddedToGroup);
+            socket.off("kickedFromGroup", handleKickedFromGroup);
+        };
+    }, [user, setRooms]);
 
     useEffect(() => {
         const fetchRooms = async () => {

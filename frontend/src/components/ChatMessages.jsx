@@ -1,10 +1,7 @@
 import { useEffect, useState, useRef } from "react"
-import { io } from "socket.io-client";
+import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
-
-const backend_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
-const socket = io(backend_url);
 
 export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, roomId, user, isDrawerOpen, setIsDrawerOpen }) {
     const token = localStorage.getItem("jwtToken");
@@ -83,17 +80,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showEmojiPicker]);
 
-    useEffect(() => {
-        if(!myId) return;
-        
-        const handleSetup = () => socket.emit("setup", myId);
-        
-        if(socket.connected) handleSetup();
-        socket.on("connect", handleSetup);
-
-        return () => socket.off("connect", handleSetup);
-    }, [myId]);
-
     // 2. FETCH HISTORY BY ROOM ID
     useEffect(() => {
         if(!roomId) return;
@@ -126,6 +112,10 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             if (msg.roomId !== roomId) return; 
 
             setMessages((prev) => {
+                if (msg.id && prev.some(existingMsg => existingMsg.id === msg.id)) {
+                    return prev;
+                }
+
                 const isOptimisticMessagePending = prev.some(existingMsg => existingMsg.id === msg.tempId);
 
                 if(msg.tempId && isOptimisticMessagePending) {
@@ -291,6 +281,22 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                         
                         const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsg.time !== msg.time;
                         const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsg.time !== msg.time;
+
+                        if (msg.type === 'SYSTEM') {
+                            return (
+                                <div key={msg.tempId || msg.id} className="flex flex-col items-center justify-center my-5 animate-message-pop w-full gap-1.5">
+                
+                                    <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                                        Today at {msg.time}
+                                    </span>
+
+                                    <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[12px] font-medium px-4 py-1.5 rounded-full shadow-sm">
+                                        {msg.text}
+                                    </span>
+                                    
+                                </div>
+                            )
+                        }
 
                         return (
                             <div 
