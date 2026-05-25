@@ -67,6 +67,10 @@ export default {
       fadeOut: {
         '0%': { opacity: '1', transform: 'translateY(0)' },
         '100%': { opacity: '0', transform: 'translateY(-20px)' },
+      },
+      typingDot: {
+        '0%, 100%': { transform: 'translateY(0)' },
+        '50%': { transform: 'translateY(-4px)' },
       }
     },
     animation: {
@@ -74,6 +78,7 @@ export default {
       'fade-down': 'fadeDown 0.5s ease-out forwards',
       'fade-out': 'fadeOut 0.5s ease-in forwards',
       'message-pop': 'messagePop 0.25s ease-out forwards',
+      'typing-dot': 'typingDot 1.4s ease-in-out infinite',
     }
   },
   plugins: [require("tailwindcss-animate")],

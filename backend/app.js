@@ -105,6 +105,17 @@ io.on("connection", (socket) => {
       console.error("Error saving/sending message:", err);
     }
   })
+
+  // Typing indicators
+  socket.on("typing", ({roomId, fullname}) => {
+    socket.to(`room_${roomId}`).emit("userTyping", {fullname})
+  });
+
+  socket.on("stopTyping", ({roomId, fullname}) => {
+    socket.to(`room_${roomId}`).emit("userStoppedTyping", {fullname});
+  });
+
+  // Disconnect
   socket.on("disconnect", () => console.log(`User disconnected: ${socket.id}`));
 })
 

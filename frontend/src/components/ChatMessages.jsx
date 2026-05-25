@@ -8,6 +8,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
 
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
+    const [typingUsers, setTypingUsers] = useState([]);
 
     const [selectedImage, setSelectedImage] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -21,6 +22,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const pickerRef = useRef(null); 
     const buttonRef = useRef(null); 
     const recognitionRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
 
     // Display logic
     const isGroup = activeRoom?.type === 'GROUP';
@@ -125,10 +127,28 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                 }
                 return [...prev, msg]
             })
+        };
+
+        const handleUserTyping = ({fullname}) => {
+            setTypingUsers((prev) => {
+                if(!prev.includes(fullname)) return [...prev, fullname];
+                return prev;
+            });
         }
 
+        const handleUserStoppedTyping = ({fullname}) => {
+            setTypingUsers((prev) => prev.filter((name) => name !== fullname));
+        };
+
         socket.on("receiveMessage", handleIncomingMessage);
-        return () => socket.off("receiveMessage", handleIncomingMessage);
+        socket.on("userTyping", handleUserTyping);
+        socket.on("userStoppedTyping", handleUserStoppedTyping);
+
+        return () => {
+            socket.off("receiveMessage", handleIncomingMessage);
+            socket.off("userTyping", handleUserTyping);
+            socket.off("userStoppedTyping", handleUserStoppedTyping);
+        }
     }, [roomId]);
 
     const handleUpdateRoomInfo = (roomId, updatedData) => {
@@ -182,6 +202,21 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
     }
 
+    // Input change handler with timeout
+    const handleInputChange = (e) => {
+        setInputText(e.target.value);
+
+        if(!roomId || !myMail) return;
+
+        socket.emit("typing", {roomId: roomId, fullname: user.fullname});
+
+        if(typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit("stopTyping", {roomId: roomId, fullname: user.fullname});
+        }, 2000);
+    }
+
     const sendMessage = async () => {
         if((!inputText.trim() && !selectedFile) || !roomId) return;
 
@@ -196,6 +231,8 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
 
         setInputText("");
         removeImage();
+        clearTimeout(typingTimeoutRef.current);
+        socket.emit("stopTyping", {roomId: roomId, fullname: user.fullname});
 
         const tempId = Date.now();
         const userData = storedData ? JSON.parse(storedData) : null;
@@ -356,6 +393,26 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                             </div>
                         );
                     })}
+                    {typingUsers.length > 0 && (
+                        <div className="flex w-full animate-in fade-in slide-in-from-bottom-2 mb-4 justify-start">
+                            <div className="flex items-center gap-3 max-w-2xl">
+                                
+                                <div className="px-4 py-3.5 bg-[#161618] border border-[#2c2c2f] rounded-2xl rounded-bl-md flex items-center gap-1 w-fit h-9">
+                                    <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '0ms' }}></span>
+                                    <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '200ms' }}></span>
+                                    <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '400ms' }}></span>
+                                </div>
+
+                                <span className="text-[12px] font-medium text-[#8f8f96]">
+                                    {typingUsers.length === 1 
+                                        ? `${typingUsers[0]} is typing...` 
+                                        : `${typingUsers.length} people are typing...`
+                                    }
+                                </span>
+                                
+                            </div>
+                        </div>
+                    )}
                     <div ref={messagesEndRef}/>
                 </div>
             </div>
@@ -416,7 +473,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                         <input 
                             type="text" 
                             value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
+                            onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
                             placeholder={`Message ${displayName?.split(' ')[0] || 'Group'}...`}
                             className="flex-1 bg-transparent border-none outline-none text-[#e1e1e3] text-[14px] placeholder-[#8f8f96] px-3"
