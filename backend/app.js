@@ -95,7 +95,8 @@ io.on("connection", (socket) => {
         roomId: roomId,
         time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
             hour: 'numeric', minute: '2-digit', hour12: true 
-        })
+        }),
+        date: savedMessage.createdAt
       }
 
       // Broadcast to entire room at once

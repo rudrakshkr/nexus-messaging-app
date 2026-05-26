@@ -223,7 +223,8 @@ async function roomIdGet(req, res, next) {
                 hour: 'numeric', 
                 minute: '2-digit', 
                 hour12: true 
-            })
+            }),
+            date: msg.createdAt
         }));
 
         res.status(200).json(formattedMessages);
@@ -324,7 +325,8 @@ async function updateGroupAvatar(req, res, next) {
             roomId: savedMessage.roomId,
             time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', minute: '2-digit', hour12: true 
-            })
+            }),
+            date: savedMessage.createdAt
         };
 
         const io = req.app.get("io");
@@ -371,7 +373,8 @@ async function updateGroupName(req, res, next) {
             roomId: savedMessage.roomId,
             time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', minute: '2-digit', hour12: true 
-            })
+            }),
+            date: savedMessage.createdAt
         };
 
         const io = req.app.get("io");
@@ -435,7 +438,8 @@ async function updateGroupAdmin(req, res, next) {
             roomId: savedMessage.roomId,
             time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', minute: '2-digit', hour12: true 
-            })
+            }),
+            date: savedMessage.createdAt
         };
 
         const io = req.app.get("io");
@@ -492,7 +496,8 @@ async function groupUserKick(req, res, next) {
             roomId: savedMessage.roomId,
             time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', minute: '2-digit', hour12: true 
-            })
+            }),
+            date: savedMessage.createdAt
         };
 
         const io = req.app.get("io");
@@ -578,7 +583,8 @@ async function groupUserAdd(req, res, next) {
             roomId: savedMessage.roomId,
             time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', minute: '2-digit', hour12: true 
-            })
+            }),
+            date: savedMessage.createdAt
         };
 
         const io = req.app.get("io");
