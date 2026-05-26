@@ -151,6 +151,27 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
     }, [roomId]);
 
+    const formatDateLabel = (dateString) => {
+        if(!dateString) return "Today";
+
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+
+        if(date.toDateString() === today.toDateString()) {
+            return "Today";
+        }
+        else if(date.toDateString() === yesterday.toDateString()) {
+            return "Yesterday";
+        }
+        else {
+            const options = {day: 'numeric', month: 'short', year: 'numeric'};
+
+            return date.toLocaleDateString('en-US', options);
+        }
+    }
+
     const handleUpdateRoomInfo = (roomId, updatedData) => {
         setActiveRoom(prev => {
             if (String(prev?.id) === String(roomId)) {
@@ -246,6 +267,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             fullname: displayName,
             avatar: userData?.avatar,
             time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}),
+            date: new Date().toISOString(),
             isPending: true,
             roomId: roomId
         }
@@ -303,12 +325,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#0a0a0a]">
             {/* Chat Section  */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 min-h-0">
-                <div className="flex justify-center">
-                    <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[11px] font-medium px-3 py-1 rounded-full">
-                        Today
-                    </span>
-                </div>
-
                 <div className="flex flex-col w-full">
                     {messages.map((msg, index) => {
                         const isMyMessage = msg.senderEmail === myMail;
@@ -319,77 +335,92 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                         const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsg.time !== msg.time;
                         const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsg.time !== msg.time;
 
-                        if (msg.type === 'SYSTEM') {
-                            return (
-                                <div key={msg.tempId || msg.id} className="flex flex-col items-center justify-center my-5 animate-message-pop w-full gap-1.5">
-                
-                                    <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
-                                        Today at {msg.time}
-                                    </span>
-
-                                    <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[12px] font-medium px-4 py-1.5 rounded-full shadow-sm">
-                                        {msg.text}
-                                    </span>
-                                    
-                                </div>
-                            )
-                        }
+                        const currentMsgDate = msg.date ? new Date(msg.date).toDateString() : new Date().toDateString();
+                        const prevMsgDate = prevMsg?.date ? new Date(prevMsg.date).toDateString() : null;
+                        const showDateLabel = currentMsgDate !== prevMsgDate;
 
                         return (
                             <div 
                                 key={msg.tempId || msg.id} 
-                                className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
+                                className="flex flex-col w-full"
                             >
-                                <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                    
-                                    <div className="w-8 flex-shrink-0 flex items-end">
-                                        {isLastInGroup && (
-                                            <img 
-                                                src={msg.avatar}
-                                                alt={isMyMessage ? "You" : "User"} 
-                                                className="w-8 h-8 rounded-full object-cover"
-                                            />
-                                        )}
+                                {showDateLabel && (
+                                    <div className="flex items-center justify-center my-8 w-full select-none">
+                                        <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-[#2c2c2f] to-[#2c2c2f]"></div>
+                                        
+                                        <span className="px-4 text-[10px] font-bold text-[#52525b] uppercase tracking-widest">
+                                            {formatDateLabel(msg.date)}
+                                        </span>
+                                        
+                                        <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-[#2c2c2f] to-[#2c2c2f]"></div>
                                     </div>
-                                    
-                                    <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
-                                        
-                                        {/* Name & Time */}
-                                        {isFirstInGroup && (
-                                            <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                <span className="text-[13px] font-semibold text-[#e1e1e3]">
-                                                    {isMyMessage ? 'You' : msg.fullname}
-                                                </span>
-                                                <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                )}
+                                
+                                {msg.type === 'SYSTEM' ? (
+                                    <div className="flex flex-col items-center justify-center my-4 animate-message-pop w-full gap-1.5">
+                                        <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                                            {msg.time}
+                                        </span>
+                                        <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[12px] font-medium px-4 py-1.5 rounded-full shadow-sm">
+                                            {msg.text}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div 
+                                        key={msg.tempId || msg.id} 
+                                        className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
+                                    >
+                                        <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <div className="w-8 flex-shrink-0 flex items-end">
+                                                {isLastInGroup && (
+                                                    <img 
+                                                        src={msg.avatar}
+                                                        alt={isMyMessage ? "You" : "User"} 
+                                                        className="w-8 h-8 rounded-full object-cover"
+                                                    />
+                                                )}
                                             </div>
-                                        )}
-                                        
-                                        <div className={`px-4 py-2 w-fit ${
-                                            isMyMessage 
-                                                ? 'bg-[#8444f6] text-white' 
-                                                : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3]'
-                                        } 
-                                        ${isMyMessage 
-                                            ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
-                                            : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
-                                        }`}>
-                                            {msg.imageUrl && (
-                                                <img 
-                                                    src={msg.imageUrl} 
-                                                    alt="Attachment" 
-                                                    onClick={() => setZoomedImage(msg.imageUrl)}
-                                                    className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                                />
-                                            )}
+                                            
+                                            <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                                
+                                                {/* Name & Time */}
+                                                {isFirstInGroup && (
+                                                    <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                        <span className="text-[13px] font-semibold text-[#e1e1e3]">
+                                                            {isMyMessage ? 'You' : msg.fullname}
+                                                        </span>
+                                                        <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className={`px-4 py-2 w-fit ${
+                                                    isMyMessage 
+                                                        ? 'bg-[#8444f6] text-white' 
+                                                        : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3]'
+                                                } 
+                                                ${isMyMessage 
+                                                    ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
+                                                    : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
+                                                }`}>
+                                                    {msg.imageUrl && (
+                                                        <img 
+                                                            src={msg.imageUrl} 
+                                                            alt="Attachment" 
+                                                            onClick={() => setZoomedImage(msg.imageUrl)}
+                                                            className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                        />
+                                                    )}
 
-                                            {msg.text && (
-                                                <p className="text-[14px]">
-                                                    {msg.text} 
-                                                </p>
-                                            )}
+                                                    {msg.text && (
+                                                        <p className="text-[14px]">
+                                                            {msg.text} 
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         );
                     })}
