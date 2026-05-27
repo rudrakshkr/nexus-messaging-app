@@ -84,6 +84,16 @@ io.on("connection", (socket) => {
         }
       });
 
+      await prisma.roomParticipant.updateMany({
+        where: {
+          roomId: roomId,
+          userId: {not: sender.id}
+        },
+        data: {
+          unreadCount: {increment: 1}
+        }
+      })
+
       const formattedMessage = {
         id: savedMessage.id,
         text: savedMessage.text,

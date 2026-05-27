@@ -24,44 +24,45 @@ enum MessageType {
 
 // Users Table
 model Users {
-  id       Int    @id @default(autoincrement())
-  fullname String @db.VarChar(255)
-  email String @unique @db.VarChar(255)
-  avatar String?
-  password String @db.VarChar(255)
+  id       Int     @id @default(autoincrement())
+  fullname String  @db.VarChar(255)
+  email    String  @unique @db.VarChar(255)
+  avatar   String?
+  password String  @db.VarChar(255)
 
   // Relations
-  messages Message[]
-  rooms RoomParticipant[]
-  createdAt DateTime @default(now())
+  messages  Message[]
+  rooms     RoomParticipant[]
+  createdAt DateTime          @default(now())
 }
 
 // Room Table
 model Room {
-  id Int    @id @default(autoincrement())
+  id      Int      @id @default(autoincrement())
   subject String?
-  avatar String?
-  type RoomType @default(DIRECT)
+  avatar  String?
+  type    RoomType @default(DIRECT)
 
   // Relations
   participants RoomParticipant[]
-  messages Message[]
-  createdAt DateTime @default(now())
+  messages     Message[]
+  createdAt    DateTime          @default(now())
 }
 
 // Many-to-Many: Users <--> Rooms
 
 model RoomParticipant {
-  id Int    @id @default(autoincrement())
-  joinedAt DateTime @default(now())
-  role Role @default(MEMBER)
+  id           Int      @id @default(autoincrement())
+  joinedAt     DateTime @default(now())
+  role         Role     @default(MEMBER)
+  unreadCount Int      @default(0)
 
   // Relation to user
-  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   Users @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int
 
   // Relation to room
-  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId Int
 
   // A USER CAN BE IN THE SAME ROOM ONCE
@@ -70,8 +71,8 @@ model RoomParticipant {
 
 // Messages Table
 model Message {
-  id Int    @id @default(autoincrement())
-  text String @db.Text
+  id       Int     @id @default(autoincrement())
+  text     String  @db.Text
   imageUrl String? @db.Text
 
   type MessageType @default(USER)
@@ -79,10 +80,10 @@ model Message {
   createdAt DateTime @default(now())
 
   // Relation to user
-  sender Users? @relation(fields: [senderId], references: [id])
+  sender   Users? @relation(fields: [senderId], references: [id])
   senderId Int
 
   // Relation to room
-  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId Int
 }

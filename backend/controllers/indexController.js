@@ -166,7 +166,23 @@ async function roomsGet(req, res, next) {
             }
         });
 
-        return res.status(200).json({rooms: getRooms});
+        const formattedRooms = getRooms.map(room => {
+            const myParticipantInfo = room.participants.find(p => p.userId === userId);
+            
+            return {
+                ...room,
+                unreadCount: myParticipantInfo ? myParticipantInfo.unreadCount : 0
+            };
+        });
+
+        formattedRooms.sort((a, b) => {
+            const dateA = a.messages.length > 0 ? new Date(a.messages[0].createdAt) : new Date(a.createdAt);
+            const dateB = b.messages.length > 0 ? new Date(b.messages[0].createdAt) : new Date(b.createdAt);
+            
+            return dateB - dateA; 
+        });
+
+        return res.status(200).json({rooms: formattedRooms});
 
     } catch(err) {
         console.error("Prisma Error: ", err);
@@ -456,6 +472,18 @@ async function updateGroupAdmin(req, res, next) {
     }
 }
 
+async function markRoomAsRead(req, res) {
+    const { roomId } = req.body;
+    const userId = req.user.id;
+
+    await prisma.roomParticipant.updateMany({
+        where: { roomId: parseInt(roomId), userId: userId },
+        data: { unreadCount: 0 }
+    });
+
+    return res.status(200).json({ success: true });
+}
+
 async function groupUserKick(req, res, next) {
     try {
         const {roomId, userId} = req.body;
@@ -681,6 +709,7 @@ module.exports = {
     updateGroupAvatar,
     updateGroupName,
     updateGroupAdmin,
+    markRoomAsRead,
     groupUserKick,
     groupUserAdd,
     usersGet

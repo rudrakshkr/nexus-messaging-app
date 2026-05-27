@@ -12,6 +12,7 @@ const {
     updateGroupAvatar,
     updateGroupName,
     updateGroupAdmin,
+    markRoomAsRead,
     groupUserKick,
     groupUserAdd,
     createRoom,
@@ -33,11 +34,15 @@ indexRouter.post('/api/sign-up', signUpPagePost);
 indexRouter.get('/api/getUsers', verifyToken, usersGet);
 indexRouter.get('/api/getRooms', verifyToken, roomsGet);
 indexRouter.get('/api/messages/:roomId', verifyToken, roomIdGet);
+
 indexRouter.post('/api/uploadImage', verifyToken, upload.single('image'), uploadImage);
 indexRouter.post('/api/editProfile', verifyToken, upload.single('avatar'), editProfile);
+
 indexRouter.put('/api/updateGroupAvatar', verifyToken, upload.single('groupAvatar'), updateGroupAvatar);
 indexRouter.put('/api/updateGroupName', verifyToken, updateGroupName);
 indexRouter.put('/api/updateGroupAdmin', verifyToken, updateGroupAdmin);
+indexRouter.put('/api/markRoomRead', verifyToken, markRoomAsRead);
+
 indexRouter.delete('/api/kickGroupUser', verifyToken, groupUserKick);
 indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
