@@ -88,12 +88,14 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
                         const displayName = isGroup ? room.subject : otherParticipant?.fullname;
                         const displayAvatar = isGroup ? room.avatar : otherParticipant?.avatar;
 
-                        const lastMessage = room.messages?.length > 0
-                            ? (room.messages[0].text.trim().length !== 0 ? room.messages[0].text : "📎 Attachment")
+                        const lastMsgObj = room.messages?.[0];
+
+                        const lastMessage = lastMsgObj
+                            ? (lastMsgObj.text?.trim().length !== 0 ? lastMsgObj.text.trim().slice(0,38) : "📎 Attachment")
                             : "No messages yet";
                         
-                        const displayTime = room.messages?.length > 0
-                            ? new Date(room.messages[0].createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        const displayTime = lastMsgObj
+                            ? new Date(lastMsgObj.createdAt || lastMsgObj.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                             : "";
                         return (
                             <div 
@@ -138,6 +140,12 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
                                         <p className="text-[13px] font-medium text-[#c0c0c8] truncate pr-4">
                                             {lastMessage}
                                         </p>
+
+                                        {room.unreadCount > 0 && (
+                                            <div className="flex items-center justify-center min-w-[20px] h-[20px] rounded-full bg-[#8444f6] text-white text-[11px] font-bold px-1.5 flex-shrink-0 shadow-[0_0_10px_rgba(132,68,246,0.4)] animate-in zoom-in duration-200">
+                                                {room.unreadCount > 99 ? '99+' : room.unreadCount}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

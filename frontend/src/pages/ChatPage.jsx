@@ -19,6 +19,31 @@ export default function ChatPage({user, setUser}) {
         if (socket.connected) handleSetup();
         socket.on("connect", handleSetup);
 
+        const handleGlobalMessage = (msg) => {
+            setRooms(prevRooms => {
+                const roomIndex = prevRooms.findIndex(room => String(room.id) === String(msg.roomId));
+
+                if (roomIndex !== -1) {
+                    const isCurrentlyViewing = activeRoom && String(activeRoom.id) === String(msg.roomId);
+                    
+                    const updatedRoom = {
+                        ...prevRooms[roomIndex],
+                        unreadCount: !isCurrentlyViewing ? (prevRooms[roomIndex].unreadCount || 0) + 1 : 0,
+                        messages: [msg]
+                    };
+
+                    const newRooms = [...prevRooms];
+                    
+                    newRooms.splice(roomIndex, 1);
+                    newRooms.unshift(updatedRoom);
+
+                    return newRooms;
+                }
+                
+                return prevRooms;
+            });
+        };
+
         const handleAddedToGroup = (data) => {
             socket.emit("joinRoom", data.roomId);
             
@@ -41,15 +66,17 @@ export default function ChatPage({user, setUser}) {
             });
         };
 
+        socket.on("receiveMessage", handleGlobalMessage);
         socket.on("addedToGroup", handleAddedToGroup);
         socket.on("kickedFromGroup", handleKickedFromGroup);
 
         return () => {
             socket.off("connect", handleSetup);
+            socket.off("receiveMessage", handleGlobalMessage);
             socket.off("addedToGroup", handleAddedToGroup);
             socket.off("kickedFromGroup", handleKickedFromGroup);
         };
-    }, [user, setRooms]);
+    }, [user, setRooms, activeRoom]);
 
     useEffect(() => {
         const fetchRooms = async () => {
@@ -74,13 +101,32 @@ export default function ChatPage({user, setUser}) {
         fetchRooms();
     }, [token]);
 
+    const handleRoomSelect = (room) => {
+        setActiveRoom(room);
+
+        setRooms(prevRooms => 
+            prevRooms.map(r => r.id === room.id ? {...r, unreadCount: 0} : r)
+        );
+
+        if (room.unreadCount > 0) {
+            fetch('/api/markRoomRead', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ roomId: room.id })
+            }).catch(err => console.error("Failed to mark as read:", err));
+        }
+    }
+
     return (
         <main className="w-full h-screen overflow-hidden flex bg-[#0f0f0f] text-white font-sans">
             {/* Chat Sidebar  */}
             <Sidebar 
                 user={user} 
                 setUser={setUser} 
-                onSelectRoom={setActiveRoom}
+                onSelectRoom={handleRoomSelect}
                 activeRoom={activeRoom} 
                 rooms={rooms}
                 setRooms={setRooms}
