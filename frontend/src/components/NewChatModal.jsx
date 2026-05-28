@@ -7,6 +7,14 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
     const [isLoading, setIsLoading] = useState(false);
     const [notification, setNotification] = useState("");
 
+    const [searchTerm, setSearchTerm] = useState("");
+
+    // Filter Users
+    const filteredUsers = users.filter(u => 
+        u.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
     // Toast notification
     const showToast = (message) => {
         setNotification(message);
@@ -193,8 +201,31 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
 
                     <div>
                         <label className="text-[13px] font-medium text-[#8f8f96] mb-2 block">Select Participants</label>
+
+                        {/* Search Bar */}
+                        <div className="relative mb-3">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#52525b]">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </div>
+                            <input 
+                                type="text" 
+                                placeholder="Search by name or email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-[#0a0a0a] border border-[#2c2c2f] rounded-lg pl-9 pr-4 py-2 text-[#e1e1e3] text-[13px] outline-none focus:border-[#8444f6] transition-colors"
+                            />
+                        </div>
+
                         <div className="flex flex-col gap-1">
-                            {users.map(u => {
+                            {filteredUsers.length === 0 && (
+                                <div className="text-center py-6 text-[#8f8f96] text-[13px]">
+                                    No users found matching {searchTerm}
+                                </div>
+                            )}
+                            {filteredUsers.map(u => {
                                 const isAlreadyMember = addMember && activeRoom?.participants?.some(p => p.user.id === u.id);
                                 return (
                                     <div 
