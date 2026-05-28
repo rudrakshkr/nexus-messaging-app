@@ -6,6 +6,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+    const [filter, setFilter] = useState("all")
 
     const [isLoading, setIsLoading] = useState(true);
     const [errors, setErrors] = useState("");
@@ -41,6 +42,10 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
         return colors[Math.abs(hash) % colors.length];
     }
 
+    const displayedRooms = filter === "unread"
+        ? rooms.filter(r => r.unreadCount > 0)
+        : rooms;
+
     return (
         <section className="flex flex-col flex-1 bg-[#161618] border-r border-[#2c2c2f]">
             <div className="flex items-center justify-between px-4 py-4">
@@ -65,11 +70,25 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
 
             {/* Filter Toggle */}
             <div className="flex gap-2 px-4 pb-3 text-[13px] font-medium border-b border-[#2c2c2f]">
-                <button className="px-3 py-1.5 rounded-lg bg-[#8444f6]/15 text-[#b488f8] cursor-pointer transition-colors">
+                <button 
+                    onClick={() => setFilter("all")}
+                    className={`px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                        filter === "all" 
+                            ? 'bg-[#8444f6]/15 text-[#b488f8]' 
+                            : 'text-[#8f8f96] hover:bg-white/5 hover:text-[#e1e1e3]'
+                    }`}
+                >
                     All
                 </button>
                 
-                <button className="px-3 py-1.5 rounded-lg text-[#8f8f96] hover:bg-white/5 hover:text-[#e1e1e3] cursor-pointer transition-colors">
+                <button 
+                    onClick={() => setFilter("unread")}
+                    className={`px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                        filter === "unread" 
+                            ? 'bg-[#8444f6]/15 text-[#b488f8]' 
+                            : 'text-[#8f8f96] hover:bg-white/5 hover:text-[#e1e1e3]'
+                    }`}
+                >
                     Unread
                 </button>
             </div>
@@ -77,7 +96,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
             <div className="flex flex-col w-full h-full max-h-screen overflow-hidden">
                 {/* Contact Info Cards */}
                 <div className="flex-1 overflow-y-auto">
-                    {rooms.map((room) => {
+                    {displayedRooms.map((room) => {
                         const isGroup = room.type === 'GROUP';
 
                         // Find the other person in 1-on-1 chat
@@ -91,7 +110,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
                         const lastMsgObj = room.messages?.[0];
 
                         const lastMessage = lastMsgObj
-                            ? (lastMsgObj.text?.trim().length !== 0 ? lastMsgObj.text.trim().slice(0,38) : "📎 Attachment")
+                            ? (lastMsgObj.text?.trim().length !== 0 ? lastMsgObj.text.trim().slice(0,35) : "📎 Attachment")
                             : "No messages yet";
                         
                         const displayTime = lastMsgObj
