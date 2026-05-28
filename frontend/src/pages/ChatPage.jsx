@@ -8,6 +8,9 @@ export default function ChatPage({user, setUser}) {
     const token = localStorage.getItem("jwtToken");
     const [activeRoom, setActiveRoom] = useState(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchTrigger, setSearchTrigger] = useState(0);
 
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -142,6 +145,9 @@ export default function ChatPage({user, setUser}) {
                             setIsDrawerOpen={setIsDrawerOpen}
                             setRooms={setRooms}
                             onSelectRoom={setActiveRoom}
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            setSearchTrigger={setSearchTrigger}
                         />
                         
                         {/* Chat Messages */}
@@ -152,7 +158,9 @@ export default function ChatPage({user, setUser}) {
                             roomId={activeRoom.id}
                             isDrawerOpen={isDrawerOpen}
                             setIsDrawerOpen={setIsDrawerOpen}
-                            setRooms={setRooms} // Pass the global setter down
+                            setRooms={setRooms}
+                            searchQuery={searchQuery}
+                            searchTrigger={searchTrigger}
                         />
                     </>
                 ): (

@@ -3,7 +3,7 @@ import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
 
-export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, roomId, user, isDrawerOpen, setIsDrawerOpen }) {
+export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, roomId, user, isDrawerOpen, setIsDrawerOpen, searchQuery = "", searchTrigger }) {
     const token = localStorage.getItem("jwtToken");
 
     const [messages, setMessages] = useState([]);
@@ -150,6 +150,26 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             socket.off("userStoppedTyping", handleUserStoppedTyping);
         }
     }, [roomId]);
+
+    useEffect(() => {
+        if (!searchQuery || !searchQuery.trim()) return;
+
+        const matches = [...messages].reverse().filter(msg => 
+            msg.type !== 'SYSTEM' && 
+            msg.text && 
+            msg.text.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        if (matches.length > 0) {
+            const currentIndex = searchTrigger % matches.length;
+            const targetMsg = matches[currentIndex];
+            
+            const element = document.getElementById(`message-${targetMsg.tempId || targetMsg.id}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }, [searchQuery, searchTrigger, messages]);
 
     const formatDateLabel = (dateString) => {
         if(!dateString) return "Today";
@@ -321,6 +341,27 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
     }
 
+    const renderMessageText = (text, query) => {
+        if(!query || !query.trim() || !text) return text;
+
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
+
+        return (
+            <>
+                {parts.map((part, i) => 
+                    part.toLowerCase() === query.toLowerCase() ? (
+                        <span key={i} className="bg-[#00d97e] text-[#0a0a0a] rounded-sm px-1 py-0.5 font-bold shadow-md">
+                            {part}
+                        </span>
+                    ) : (
+                        <span key={i}>{part}</span>
+                    )
+                )}
+            </>
+        );
+    }
+
     return (
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#0a0a0a]">
             {/* Chat Section  */}
@@ -342,6 +383,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                         return (
                             <div 
                                 key={msg.tempId || msg.id} 
+                                id={`message-${msg.tempId || msg.id}`}
                                 className="flex flex-col w-full"
                             >
                                 {showDateLabel && (
@@ -413,7 +455,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
 
                                                     {msg.text && (
                                                         <p className="text-[14px]">
-                                                            {msg.text} 
+                                                            {renderMessageText(msg.text, searchQuery)} 
                                                         </p>
                                                     )}
                                                 </div>
