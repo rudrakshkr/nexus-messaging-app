@@ -29,6 +29,7 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
 
         const fetchUsers = async () => {
             try {
+                setIsLoading(true);
                 const res = await fetch('/api/getUsers', {
                     headers: {"Authorization": `Bearer ${token}`}
                 });
@@ -39,6 +40,9 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
             }
             catch(err) {
                 console.error("Failed to fetch users", err);
+            }
+            finally{
+                setIsLoading(false);
             }
         }
 
@@ -220,56 +224,70 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            {filteredUsers.length === 0 && (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <div key={index} className="flex items-center p-2 gap-3 w-full">
+                                        <div className="w-10 h-10 rounded-full bg-[#2c2c2f] animate-pulse shrink-0"></div>
+                                        
+                                        <div className="flex-1 flex flex-col gap-2.5">
+                                            <div className="h-3.5 bg-[#2c2c2f] rounded-md w-28 animate-pulse"></div>
+                                            <div className="h-3 bg-[#2c2c2f]/60 rounded-md w-40 animate-pulse"></div>
+                                        </div>
+                                        
+                                        <div className="w-5 h-5 rounded-[4px] border border-[#2c2c2f] bg-[#161618] animate-pulse shrink-0"></div>
+                                    </div>
+                                ))
+                            ) : filteredUsers.length === 0 ? (
                                 <div className="text-center py-6 text-[#8f8f96] text-[13px]">
                                     No users found matching {searchTerm}
                                 </div>
-                            )}
-                            {filteredUsers.map(u => {
-                                const isAlreadyMember = addMember && activeRoom?.participants?.some(p => p.user.id === u.id);
-                                return (
-                                    <div 
-                                        key={u.id}
-                                        onClick={() => !isAlreadyMember && toggleUser(u.id)}
-                                        className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
-                                            isAlreadyMember 
-                                                ? 'opacity-40 cursor-not-allowed bg-[#161618]'
-                                                : selectedUserIds.includes(u.id) 
-                                                    ? 'bg-[#8444f6]/10 border border-[#8444f6]/30 cursor-pointer' 
-                                                    : 'hover:bg-white/5 border border-transparent cursor-pointer'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {u.avatar ? (
-                                                <img 
-                                                    src={u.avatar} 
-                                                    alt={u.fullname} 
-                                                    className="w-9 h-9 rounded-full object-cover"
-                                                />
+                            ) : (
+                                filteredUsers.map(u => {
+                                    const isAlreadyMember = addMember && activeRoom?.participants?.some(p => p.user.id === u.id);
+                                    return (
+                                        <div 
+                                            key={u.id}
+                                            onClick={() => !isAlreadyMember && toggleUser(u.id)}
+                                            className={`flex items-center justify-between p-2.5 rounded-lg transition-colors ${
+                                                isAlreadyMember 
+                                                    ? 'opacity-40 cursor-not-allowed bg-[#161618]'
+                                                    : selectedUserIds.includes(u.id) 
+                                                        ? 'bg-[#8444f6]/10 border border-[#8444f6]/30 cursor-pointer' 
+                                                        : 'hover:bg-white/5 border border-transparent cursor-pointer'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                {u.avatar ? (
+                                                    <img 
+                                                        src={u.avatar} 
+                                                        alt={u.fullname} 
+                                                        className="w-9 h-9 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[14px] shadow-inner ${getAvatarColor(u.fullname)}`}>
+                                                        {u.fullname ? u.fullname.charAt(0).toUpperCase() : '#'}
+                                                    </div>
+                                                )}
+                                                <span className="text-[14px] font-medium text-[#e1e1e3]">{u.fullname}</span>
+                                            </div>
+                                            
+                                            {isAlreadyMember ? (
+                                                <span className="text-[11px] font-bold text-[#8f8f96] uppercase tracking-wide px-2">Joined</span>
                                             ) : (
-                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[14px] shadow-inner ${getAvatarColor(u.fullname)}`}>
-                                                    {u.fullname ? u.fullname.charAt(0).toUpperCase() : '#'}
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
+                                                    selectedUserIds.includes(u.id) ? 'bg-[#8444f6] border-[#8444f6]' : 'border-[#2c2c2f] bg-[#0a0a0a]'
+                                                }`}>
+                                                    {selectedUserIds.includes(u.id) && (
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                                        </svg>
+                                                    )}
                                                 </div>
                                             )}
-                                            <span className="text-[14px] font-medium text-[#e1e1e3]">{u.fullname}</span>
                                         </div>
-                                        
-                                        {isAlreadyMember ? (
-                                            <span className="text-[11px] font-bold text-[#8f8f96] uppercase tracking-wide px-2">Joined</span>
-                                        ) : (
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
-                                                selectedUserIds.includes(u.id) ? 'bg-[#8444f6] border-[#8444f6]' : 'border-[#2c2c2f] bg-[#0a0a0a]'
-                                            }`}>
-                                                {selectedUserIds.includes(u.id) && (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                                    </svg>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 </div>
