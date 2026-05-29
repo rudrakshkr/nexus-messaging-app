@@ -2,13 +2,12 @@ import { useEffect, useState } from "react"
 import NewChatModal from "./NewChatModal";
 import { Link } from "react-router";
 
-export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms, setRooms}) {
+export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms, setRooms, isLoading}) {
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
     const [filter, setFilter] = useState("all")
 
-    const [isLoading, setIsLoading] = useState(true);
     const [errors, setErrors] = useState("");
 
     const handleLogout = async (e) => {
@@ -96,80 +95,104 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
             <div className="flex flex-col w-full h-full max-h-screen overflow-hidden">
                 {/* Contact Info Cards */}
                 <div className="flex-1 overflow-y-auto">
-                    {displayedRooms.map((room) => {
-                        const isGroup = room.type === 'GROUP';
+                    {isLoading ? (
+                        Array.from({ length: 8 }).map((_, index) => (
+                            <div key={index} className="flex items-center gap-3 p-3 w-full">
+                                <div className="w-11 h-11 rounded-full skeleton shrink-0"></div>
 
-                        // Find the other person in 1-on-1 chat
-                        const otherParticipant = !isGroup
-                            ? room.participants.find(p => p.user.email !== user.email)?.user
-                            : null;
-
-                        const displayName = isGroup ? room.subject : otherParticipant?.fullname;
-                        const displayAvatar = isGroup ? room.avatar : otherParticipant?.avatar;
-
-                        const lastMsgObj = room.messages?.[0];
-
-                        const lastMessage = lastMsgObj
-                            ? (lastMsgObj.text?.trim().length !== 0 ? lastMsgObj.text.trim().slice(0,35) : "📎 Attachment")
-                            : "No messages yet";
-                        
-                        const displayTime = lastMsgObj
-                            ? new Date(lastMsgObj.createdAt || lastMsgObj.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                            : "";
-                        return (
-                            <div 
-                                className={`relative flex items-center gap-3 p-3 w-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden ${
-                                    activeRoom?.id === room.id 
-                                        ? 'bg-[#2a2a2e] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[60%] before:w-1.5 before:bg-[#8444f6] before:rounded-r-md' 
-                                        : 'hover:bg-white/5'
-                                }`}
-                                key={room.id}
-                                onClick={() => onSelectRoom(room)}
-                            >
-                                <div className="relative flex-shrink-0">
-                                    {!displayAvatar ? (
-                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
-                                            {displayName ? displayName.charAt(0).toUpperCase() : '#'}
-                                        </div>
-                                    ) : (
-                                        <img 
-                                            src={displayAvatar} 
-                                            alt={displayName} 
-                                            className="w-11 h-11 rounded-full object-cover"
-                                        />
-                                    )}
-
-                                    {!isGroup && (
-                                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
-                                    )}
-                                    
-                                </div>
-
-                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                    <div className="flex justify-between items-baseline mb-0.5">
-                                        <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate pr-2">
-                                            {displayName}
-                                        </h3>
-                                        <span className="text-xs text-[#8f8f96] flex-shrink-0">
-                                            {displayTime}
-                                        </span>
-                                    </div>
-
+                                <div className="flex-1 flex flex-col gap-2.5 justify-center mt-0.5">
                                     <div className="flex justify-between items-center">
-                                        <p className="text-[13px] font-medium text-[#c0c0c8] truncate pr-4">
-                                            {lastMessage}
-                                        </p>
-
-                                        {room.unreadCount > 0 && (
-                                            <div className="flex items-center justify-center min-w-[20px] h-[20px] rounded-full bg-[#8444f6] text-white text-[11px] font-bold px-1.5 flex-shrink-0 shadow-[0_0_10px_rgba(132,68,246,0.4)] animate-in zoom-in duration-200">
-                                                {room.unreadCount > 99 ? '99+' : room.unreadCount}
-                                            </div>
-                                        )}
+                                        <div className={`h-3.5 skeleton rounded-md ${index % 2 === 0 ? 'w-28' : 'w-36'}`}></div>
+                                        <div className="h-2.5 skeleton rounded-md w-8 opacity-40"></div>
                                     </div>
+                                    <div className="h-3 skeleton rounded-md w-3/4 opacity-60"></div>
                                 </div>
                             </div>
-                        )
-                    })}
+                        ))
+                    ) : displayedRooms.length === 0 ? (
+                        <div className="p-6 text-center flex flex-col items-center gap-3 mt-4 opacity-50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#8f8f96]">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span className="text-[#8f8f96] text-[13px] font-medium">No conversations yet. Click the + icon on top right to start a conversation ;)</span>
+                        </div>
+                        
+                    ) : (
+                        displayedRooms.map((room) => {
+                            const isGroup = room.type === 'GROUP';
+
+                            // Find the other person in 1-on-1 chat
+                            const otherParticipant = !isGroup
+                                ? room.participants.find(p => p.user.email !== user.email)?.user
+                                : null;
+
+                            const displayName = isGroup ? room.subject : otherParticipant?.fullname;
+                            const displayAvatar = isGroup ? room.avatar : otherParticipant?.avatar;
+
+                            const lastMsgObj = room.messages?.[0];
+
+                            const lastMessage = lastMsgObj
+                                ? (lastMsgObj.text?.trim().length !== 0 ? lastMsgObj.text.trim().slice(0,35) : "📎 Attachment")
+                                : "No messages yet";
+                            
+                            const displayTime = lastMsgObj
+                                ? new Date(lastMsgObj.createdAt || lastMsgObj.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                                : "";
+                            return (
+                                <div 
+                                    className={`relative flex items-center gap-3 p-3 w-full rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden ${
+                                        activeRoom?.id === room.id 
+                                            ? 'bg-[#2a2a2e] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-[60%] before:w-1.5 before:bg-[#8444f6] before:rounded-r-md' 
+                                            : 'hover:bg-white/5'
+                                    }`}
+                                    key={room.id}
+                                    onClick={() => onSelectRoom(room)}
+                                >
+                                    <div className="relative flex-shrink-0">
+                                        {!displayAvatar ? (
+                                            <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-[17px] shadow-inner ${getAvatarColor(displayName)}`}>
+                                                {displayName ? displayName.charAt(0).toUpperCase() : '#'}
+                                            </div>
+                                        ) : (
+                                            <img 
+                                                src={displayAvatar} 
+                                                alt={displayName} 
+                                                className="w-11 h-11 rounded-full object-cover"
+                                            />
+                                        )}
+
+                                        {!isGroup && (
+                                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
+                                        )}
+                                        
+                                    </div>
+
+                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                        <div className="flex justify-between items-baseline mb-0.5">
+                                            <h3 className="text-[15px] font-semibold text-[#e1e1e3] truncate pr-2">
+                                                {displayName}
+                                            </h3>
+                                            <span className="text-xs text-[#8f8f96] flex-shrink-0">
+                                                {displayTime}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-[13px] font-medium text-[#c0c0c8] truncate pr-4">
+                                                {lastMessage}
+                                            </p>
+
+                                            {room.unreadCount > 0 && (
+                                                <div className="flex items-center justify-center min-w-[20px] h-[20px] rounded-full bg-[#8444f6] text-white text-[11px] font-bold px-1.5 flex-shrink-0 shadow-[0_0_10px_rgba(132,68,246,0.4)] animate-in zoom-in duration-200">
+                                                    {room.unreadCount > 99 ? '99+' : room.unreadCount}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })
+                    )}
                 </div>
 
                 {/* User Info Card  */}

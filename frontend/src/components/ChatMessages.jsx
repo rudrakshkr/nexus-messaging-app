@@ -15,6 +15,8 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const [zoomedImage, setZoomedImage] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
+
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [errors, setErrors] = useState("");
 
     const messagesEndRef = useRef(null);
@@ -89,6 +91,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
 
         const fetchMessageHistory = async () => {
             try {
+                setIsLoadingMessages(true);
                 const res = await fetch(`/api/messages/${roomId}`, {
                     method: 'GET',
                     headers: {
@@ -103,6 +106,9 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             } catch(err) {
                 console.error("Fetch error: ", err);
                 setErrors("Failed to load page data.");
+            }
+            finally {
+                setIsLoadingMessages(false);
             }
         };
 
@@ -170,6 +176,23 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             }
         }
     }, [searchQuery, searchTrigger, messages]);
+
+    const getAvatarColor = (name) => {
+        if(!name) return 'bg[#8444f6]';
+
+        const colors = [
+            'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
+            'bg-[#ffab00]', 'bg-[#0052cc]', 'bg-[#e34935]',
+            'bg-[#17a2b8]', 'bg-[#e83e8c]', 'bg-[#f6c23e]'
+        ];
+
+        let hash = 0;
+        for(let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        return colors[Math.abs(hash) % colors.length];
+    }
 
     const formatDateLabel = (dateString) => {
         if(!dateString) return "Today";
@@ -366,128 +389,187 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#0a0a0a]">
             {/* Chat Section  */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 min-h-0">
-                <div className="flex flex-col w-full">
-                    {messages.map((msg, index) => {
-                        const isMyMessage = msg.senderEmail === myMail;
-                        
-                        const prevMsg = messages[index - 1];
-                        const nextMsg = messages[index + 1];
-                        
-                        const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsg.time !== msg.time;
-                        const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsg.time !== msg.time;
+                {/* Loading Skeleton  */}
+                {isLoadingMessages ? (
+                    <div className="flex flex-col w-full gap-6 py-4">
+                        <div className="flex w-full justify-start gap-3">
+                            <div className="w-8 h-8 rounded-full skeleton shrink-0 mt-auto mb-1"></div>
+                            <div className="flex flex-col gap-1.5 w-full max-w-[60%] sm:max-w-[40%]">
+                                <div className="h-[52px] skeleton rounded-2xl rounded-bl-md w-full"></div>
+                                <div className="h-10 skeleton rounded-2xl w-3/4"></div>
+                            </div>
+                        </div>
 
-                        const currentMsgDate = msg.date ? new Date(msg.date).toDateString() : new Date().toDateString();
-                        const prevMsgDate = prevMsg?.date ? new Date(prevMsg.date).toDateString() : null;
-                        const showDateLabel = currentMsgDate !== prevMsgDate;
+                        <div className="flex w-full justify-end gap-3">
+                            <div className="flex flex-col gap-1.5 w-full max-w-[60%] sm:max-w-[40%] items-end">
+                                <div className="h-10 skeleton-purple rounded-2xl rounded-br-md w-4/5"></div>
+                            </div>
+                        </div>
 
-                        return (
-                            <div 
-                                key={msg.tempId || msg.id} 
-                                id={`message-${msg.tempId || msg.id}`}
-                                className="flex flex-col w-full"
-                            >
-                                {showDateLabel && (
-                                    <div className="flex items-center justify-center my-8 w-full select-none">
-                                        <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-[#2c2c2f] to-[#2c2c2f]"></div>
-                                        
-                                        <span className="px-4 text-[10px] font-bold text-[#52525b] uppercase tracking-widest">
-                                            {formatDateLabel(msg.date)}
-                                        </span>
-                                        
-                                        <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-[#2c2c2f] to-[#2c2c2f]"></div>
-                                    </div>
-                                )}
-                                
-                                {msg.type === 'SYSTEM' ? (
-                                    <div className="flex flex-col items-center justify-center my-4 animate-message-pop w-full gap-1.5">
-                                        <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
-                                            {msg.time}
-                                        </span>
-                                        <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[12px] font-medium px-4 py-1.5 rounded-full shadow-sm">
-                                            {msg.text}
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <div 
-                                        key={msg.tempId || msg.id} 
-                                        className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
-                                    >
-                                        <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                            <div className="w-8 flex-shrink-0 flex items-end">
-                                                {isLastInGroup && (
-                                                    <img 
-                                                        src={msg.avatar}
-                                                        alt={isMyMessage ? "You" : "User"} 
-                                                        className="w-8 h-8 rounded-full object-cover"
-                                                    />
-                                                )}
-                                            </div>
+                        <div className="flex w-full justify-start gap-3 mt-4">
+                            <div className="w-8 h-8 rounded-full skeleton shrink-0 mt-auto mb-1"></div>
+                            <div className="flex flex-col gap-1 w-full max-w-[60%] sm:max-w-[40%]">
+                                <div className="h-10 skeleton rounded-2xl rounded-bl-md w-[45%]"></div>
+                            </div>
+                        </div>
+
+                        <div className="flex w-full justify-end gap-3 mt-2">
+                            <div className="flex flex-col gap-1.5 w-full max-w-[60%] sm:max-w-[40%] items-end">
+                                <div className="h-10 skeleton-purple rounded-2xl w-[90%]"></div>
+                                <div className="h-10 skeleton-purple rounded-2xl rounded-br-md w-[60%]"></div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex w-full justify-start gap-3">
+                            <div className="w-8 h-8 rounded-full skeleton shrink-0 mt-auto mb-1"></div>
+                            <div className="flex flex-col gap-1.5 w-full max-w-[60%] sm:max-w-[40%]">
+                                <div className="h-[52px] skeleton rounded-2xl rounded-bl-md w-full"></div>
+                                <div className="h-10 skeleton rounded-2xl w-3/4"></div>
+                            </div>
+                        </div>
+
+                        <div className="flex w-full justify-end gap-3">
+                            <div className="flex flex-col gap-1.5 w-full max-w-[60%] sm:max-w-[40%] items-end">
+                                <div className="h-10 skeleton-purple rounded-2xl rounded-br-md w-4/5"></div>
+                            </div>
+                        </div>
+
+                        <div className="flex w-full justify-start gap-3 mt-4">
+                            <div className="w-8 h-8 rounded-full skeleton shrink-0 mt-auto mb-1"></div>
+                            <div className="flex flex-col gap-1 w-full max-w-[60%] sm:max-w-[40%]">
+                                <div className="h-10 skeleton rounded-2xl rounded-bl-md w-[45%]"></div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+
+                     <div className="flex flex-col w-full">
+                        {messages.map((msg, index) => {
+                            const isMyMessage = msg.senderEmail === myMail;
+                            
+                            const prevMsg = messages[index - 1];
+                            const nextMsg = messages[index + 1];
+                            
+                            const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsg.time !== msg.time;
+                            const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsg.time !== msg.time;
+
+                            const currentMsgDate = msg.date ? new Date(msg.date).toDateString() : new Date().toDateString();
+                            const prevMsgDate = prevMsg?.date ? new Date(prevMsg.date).toDateString() : null;
+                            const showDateLabel = currentMsgDate !== prevMsgDate;
+
+                            return (
+                                <div 
+                                    key={msg.tempId || msg.id} 
+                                    id={`message-${msg.tempId || msg.id}`}
+                                    className="flex flex-col w-full"
+                                >
+                                    {showDateLabel && (
+                                        <div className="flex items-center justify-center my-8 w-full select-none">
+                                            <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-[#2c2c2f] to-[#2c2c2f]"></div>
                                             
-                                            <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
-                                                
-                                                {/* Name & Time */}
-                                                {isFirstInGroup && (
-                                                    <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                        <span className="text-[13px] font-semibold text-[#e1e1e3]">
-                                                            {isMyMessage ? 'You' : msg.fullname}
-                                                        </span>
-                                                        <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
-                                                    </div>
-                                                )}
-                                                
-                                                <div className={`px-4 py-2 w-fit ${
-                                                    isMyMessage 
-                                                        ? 'bg-[#8444f6] text-white' 
-                                                        : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3]'
-                                                } 
-                                                ${isMyMessage 
-                                                    ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
-                                                    : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
-                                                }`}>
-                                                    {msg.imageUrl && (
-                                                        <img 
-                                                            src={msg.imageUrl} 
-                                                            alt="Attachment" 
-                                                            onClick={() => setZoomedImage(msg.imageUrl)}
-                                                            className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                                        />
+                                            <span className="px-4 text-[10px] font-bold text-[#52525b] uppercase tracking-widest">
+                                                {formatDateLabel(msg.date)}
+                                            </span>
+                                            
+                                            <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-[#2c2c2f] to-[#2c2c2f]"></div>
+                                        </div>
+                                    )}
+                                    
+                                    {msg.type === 'SYSTEM' ? (
+                                        <div className="flex flex-col items-center justify-center my-4 animate-message-pop w-full gap-1.5">
+                                            <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                                                {msg.time}
+                                            </span>
+                                            <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[12px] font-medium px-4 py-1.5 rounded-full shadow-sm">
+                                                {msg.text}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            key={msg.tempId || msg.id} 
+                                            className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
+                                        >
+                                            <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                <div className="w-8 flex-shrink-0 flex items-end">
+                                                    {isLastInGroup && (
+                                                        msg.avatar ? 
+                                                            <img 
+                                                                src={msg.avatar}
+                                                                alt={isMyMessage ? "You" : "User"} 
+                                                                className="w-8 h-8 rounded-full object-cover"
+                                                            /> 
+                                                        :   <div className={`w-8 h-8 rounded-full object-cover flex items-center justify-center ${getAvatarColor(user.fullname)}`}>
+                                                                {msg.fullname ? msg.fullname.charAt(0).toUpperCase() : '#'}
+                                                            </div>
                                                     )}
+                                                </div>
+                                                
+                                                <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                                    
+                                                    {/* Name & Time */}
+                                                    {isFirstInGroup && (
+                                                        <div className={`flex items-baseline gap-2 mb-1 ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                            <span className="text-[13px] font-semibold text-[#e1e1e3]">
+                                                                {isMyMessage ? 'You' : msg.fullname}
+                                                            </span>
+                                                            <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className={`px-4 py-2 w-fit ${
+                                                        isMyMessage 
+                                                            ? 'bg-[#8444f6] text-white' 
+                                                            : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3]'
+                                                    } 
+                                                    ${isMyMessage 
+                                                        ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
+                                                        : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
+                                                    }`}>
+                                                        {msg.imageUrl && (
+                                                            <img 
+                                                                src={msg.imageUrl} 
+                                                                alt="Attachment" 
+                                                                onClick={() => setZoomedImage(msg.imageUrl)}
+                                                                className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                            />
+                                                        )}
 
-                                                    {msg.text && (
-                                                        <p className="text-[14px]">
-                                                            {renderMessageText(msg.text, searchQuery)} 
-                                                        </p>
-                                                    )}
+                                                        {msg.text && (
+                                                            <p className="text-[14px]">
+                                                                {renderMessageText(msg.text, searchQuery)} 
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                    {typingUsers.length > 0 && (
-                        <div className="flex w-full animate-in fade-in slide-in-from-bottom-2 mb-4 justify-start">
-                            <div className="flex items-center gap-3 max-w-2xl">
-                                
-                                <div className="px-4 py-3.5 bg-[#161618] border border-[#2c2c2f] rounded-2xl rounded-bl-md flex items-center gap-1 w-fit h-9">
-                                    <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '0ms' }}></span>
-                                    <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '200ms' }}></span>
-                                    <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '400ms' }}></span>
+                                    )}
                                 </div>
+                            );
+                        })}
+                        {typingUsers.length > 0 && (
+                            <div className="flex w-full animate-in fade-in slide-in-from-bottom-2 mb-4 justify-start">
+                                <div className="flex items-center gap-3 max-w-2xl">
+                                    
+                                    <div className="px-4 py-3.5 bg-[#161618] border border-[#2c2c2f] rounded-2xl rounded-bl-md flex items-center gap-1 w-fit h-9">
+                                        <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '0ms' }}></span>
+                                        <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '200ms' }}></span>
+                                        <span className="w-1.5 h-1.5 bg-[#8f8f96] rounded-full animate-typing-dot" style={{ animationDelay: '400ms' }}></span>
+                                    </div>
 
-                                <span className="text-[12px] font-medium text-[#8f8f96]">
-                                    {typingUsers.length === 1 
-                                        ? `${typingUsers[0]} is typing...` 
-                                        : `${typingUsers.length} people are typing...`
-                                    }
-                                </span>
-                                
+                                    <span className="text-[12px] font-medium text-[#8f8f96]">
+                                        {typingUsers.length === 1 
+                                            ? `${typingUsers[0]} is typing...` 
+                                            : `${typingUsers.length} people are typing...`
+                                        }
+                                    </span>
+                                    
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    <div ref={messagesEndRef}/>
-                </div>
+                        )}
+                        <div ref={messagesEndRef}/>
+                    </div>
+                )}
             </div>
             
             <div className="p-6 pt-2 shrink-0">

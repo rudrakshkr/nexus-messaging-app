@@ -71,6 +71,9 @@ export default {
       typingDot: {
         '0%, 100%': { transform: 'translateY(0)' },
         '50%': { transform: 'translateY(-4px)' },
+      },
+      shimmer: {
+        '100%': { transform: 'translateX(100%)' }
       }
     },
     animation: {
@@ -79,6 +82,7 @@ export default {
       'fade-out': 'fadeOut 0.5s ease-in forwards',
       'message-pop': 'messagePop 0.25s ease-out forwards',
       'typing-dot': 'typingDot 1.4s ease-in-out infinite',
+      'shimmer': 'shimmer 1.5s infinite',
     }
   },
   plugins: [require("tailwindcss-animate")],

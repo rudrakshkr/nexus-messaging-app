@@ -84,6 +84,7 @@ export default function ChatPage({user, setUser}) {
     useEffect(() => {
         const fetchRooms = async () => {
             try {
+                setIsLoading(true);
                 const res = await fetch(`/api/getRooms`, {
                     method: 'GET',
                     headers: {
@@ -133,6 +134,7 @@ export default function ChatPage({user, setUser}) {
                 activeRoom={activeRoom} 
                 rooms={rooms}
                 setRooms={setRooms}
+                isLoading={isLoading}
             />
             
             <section className="flex flex-col flex-[5] border-l border-[#2c2c2f]">

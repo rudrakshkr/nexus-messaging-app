@@ -63,6 +63,26 @@
   }
 }
 
+@layer components {
+  /* Gray Skeleton  */
+  .skeleton {
+    @apply relative overflow-hidden bg-[#2c2c2f];
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer;
+  }
+
+  /* Sent Message Skeleton  */
+  .skeleton-purple {
+    @apply relative overflow-hidden bg-[#8444f6]/30;
+  }
+  .skeleton-purple::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

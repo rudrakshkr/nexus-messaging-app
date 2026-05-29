@@ -227,14 +227,14 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, index) => (
                                     <div key={index} className="flex items-center p-2 gap-3 w-full">
-                                        <div className="w-10 h-10 rounded-full bg-[#2c2c2f] animate-pulse shrink-0"></div>
+                                        <div className="w-10 h-10 rounded-full skeleton shrink-0"></div>
                                         
                                         <div className="flex-1 flex flex-col gap-2.5">
-                                            <div className="h-3.5 bg-[#2c2c2f] rounded-md w-28 animate-pulse"></div>
-                                            <div className="h-3 bg-[#2c2c2f]/60 rounded-md w-40 animate-pulse"></div>
+                                            <div className={`h-3.5 skeleton rounded-md ${index % 2 === 0 ? 'w-32' : 'w-24'}`}></div>
+                                            <div className="h-3 skeleton rounded-md w-40 opacity-60"></div>
                                         </div>
                                         
-                                        <div className="w-5 h-5 rounded-[4px] border border-[#2c2c2f] bg-[#161618] animate-pulse shrink-0"></div>
+                                        <div className="w-5 h-5 rounded-[4px] skeleton shrink-0 border border-[#2c2c2f]"></div>
                                     </div>
                                 ))
                             ) : filteredUsers.length === 0 ? (
