@@ -531,8 +531,12 @@ async function groupUserKick(req, res, next) {
         const io = req.app.get("io");
         if(io) {
             io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
-
             io.to(`user_${userId}`).emit("kickedFromGroup", {roomId});
+
+            io.to(`room_${roomId}`).emit("participantRemoved", { 
+                roomId: parseInt(roomId), 
+                userId: parseInt(userId) 
+            });
         }
 
         return res.status(200).json({
@@ -635,6 +639,128 @@ async function groupUserAdd(req, res, next) {
     }
 }
 
+async function leaveRoom(req, res, next) {
+    try {
+        const { roomId } = req.body;
+        const userId = req.user.id;
+
+        if (!roomId) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        const room = await prisma.room.findUnique({
+            where: { id: parseInt(roomId) },
+            select: { type: true }
+        });
+
+        if (!room) return res.status(404).json({ message: "Room not found" });
+
+        const io = req.app.get("io");
+
+        // 2. DIRECT CHAT LOGIC: Delete the entire room
+        if (room.type === 'DIRECT') {
+            await prisma.room.delete({
+                where: { id: parseInt(roomId) }
+            });
+
+            if (io) {
+                io.to(`room_${roomId}`).emit("kickedFromGroup", { roomId: parseInt(roomId) });
+            }
+
+            return res.status(200).json({ message: "Chat permanently deleted" });
+        } 
+        
+        // 3. GROUP CHAT LOGIC: Just remove the user
+        else {
+            const leavingUser = await prisma.users.findUnique({
+                where: { id: userId },
+                select: { fullname: true }
+            });
+
+            await prisma.roomParticipant.deleteMany({
+                where: {
+                    userId: userId,
+                    roomId: parseInt(roomId)
+                }
+            });
+
+            const savedMessage = await prisma.message.create({
+                data: {
+                    text: `${leavingUser.fullname} left the chat.`,
+                    type: 'SYSTEM',
+                    roomId: parseInt(roomId),
+                    senderId: userId
+                }
+            });
+
+            const formattedMessage = {
+                id: savedMessage.id,
+                text: savedMessage.text,
+                type: savedMessage.type,
+                roomId: savedMessage.roomId,
+                time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
+                    hour: 'numeric', minute: '2-digit', hour12: true 
+                }),
+                date: savedMessage.createdAt
+            };
+
+            if(io) {
+                io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+                
+                io.to(`user_${userId}`).emit("kickedFromGroup", { roomId: parseInt(roomId) });
+                
+                io.to(`room_${roomId}`).emit("participantRemoved", { 
+                    roomId: parseInt(roomId), 
+                    userId: parseInt(userId) 
+                });
+            }
+
+            return res.status(200).json({ message: "Left room successfully" });
+        }
+
+    } catch(err) {
+        console.error("Couldn't leave room", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+async function deleteRoom(req, res, next) {
+    try {
+        const { roomId } = req.body;
+        const userId = req.user.id;
+
+        if (!roomId) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        const participant = await prisma.roomParticipant.findFirst({
+            where: { 
+                userId: userId, 
+                roomId: parseInt(roomId) 
+            }
+        });
+
+        if (!participant || participant.role !== 'ADMIN') {
+            return res.status(403).json({ message: "Only admins can delete this group." });
+        }
+
+        await prisma.room.delete({
+            where: { id: parseInt(roomId) }
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`room_${roomId}`).emit("kickedFromGroup", { roomId: parseInt(roomId) });
+        }
+
+        return res.status(200).json({ message: "Group deleted successfully" });
+
+    } catch(err) {
+        console.error("Couldn't delete room", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 async function createRoom(req, res, next) {
     try {
         const myUserId = parseInt(req.user.id);
@@ -689,6 +815,16 @@ async function createRoom(req, res, next) {
             }
         });
 
+        const io = req.app.get("io");
+        if (io) {
+            participantIds.forEach(id => {
+                io.to(`user_${id}`).emit("addedToGroup", {
+                    roomId: newRoom.id,
+                    roomData: newRoom
+                });
+            });
+        }
+
         return res.status(201).json({ room: newRoom, isNew: true });
 
     } catch (err) {
@@ -712,5 +848,7 @@ module.exports = {
     markRoomAsRead,
     groupUserKick,
     groupUserAdd,
+    leaveRoom,
+    deleteRoom,
     usersGet
 }

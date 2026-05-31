@@ -15,6 +15,8 @@ const {
     markRoomAsRead,
     groupUserKick,
     groupUserAdd,
+    leaveRoom,
+    deleteRoom,
     createRoom,
 } = require("../controllers/indexController");
 
@@ -44,6 +46,8 @@ indexRouter.put('/api/updateGroupAdmin', verifyToken, updateGroupAdmin);
 indexRouter.put('/api/markRoomRead', verifyToken, markRoomAsRead);
 
 indexRouter.delete('/api/kickGroupUser', verifyToken, groupUserKick);
+indexRouter.delete('/api/leaveRoom', verifyToken, leaveRoom);
+indexRouter.delete('/api/deleteRoom', verifyToken, deleteRoom);
 indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
