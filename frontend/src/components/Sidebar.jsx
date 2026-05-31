@@ -19,13 +19,17 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
     const handleRoomCreated = (response) => {
         if(response.isNew) {
             setRooms((prevRooms) => [response.room, ...prevRooms]);
+        } else {
+            setRooms((prevRooms) => prevRooms.map(r => 
+                String(r.id) === String(response.room.id) ? response.room : r
+            ));
         }
 
         onSelectRoom(response.room);
     }
 
     const getAvatarColor = (name) => {
-        if(!name) return 'bg[#8444f6]';
+        if(!name) return 'bg-[#8444f6]';
 
         const colors = [
             'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 

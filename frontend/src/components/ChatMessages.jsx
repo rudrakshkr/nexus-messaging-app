@@ -178,7 +178,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     }, [searchQuery, searchTrigger, messages]);
 
     const getAvatarColor = (name) => {
-        if(!name) return 'bg[#8444f6]';
+        if(!name) return 'bg-[#8444f6]';
 
         const colors = [
             'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 

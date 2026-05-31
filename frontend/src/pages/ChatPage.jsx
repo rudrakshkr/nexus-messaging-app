@@ -69,15 +69,39 @@ export default function ChatPage({user, setUser}) {
             });
         };
 
+        const handleParticipantRemoved = (data) => {
+            setRooms(prevRooms => prevRooms.map(room => {
+                if (String(room.id) === String(data.roomId)) {
+                    return {
+                        ...room,
+                        participants: room.participants?.filter(p => String(p.user.id) !== String(data.userId))
+                    };
+                }
+                return room;
+            }));
+
+            setActiveRoom(prevActive => {
+                if (prevActive && String(prevActive.id) === String(data.roomId)) {
+                    return {
+                        ...prevActive,
+                        participants: prevActive.participants?.filter(p => String(p.user.id) !== String(data.userId))
+                    };
+                }
+                return prevActive;
+            });
+        };
+
         socket.on("receiveMessage", handleGlobalMessage);
         socket.on("addedToGroup", handleAddedToGroup);
         socket.on("kickedFromGroup", handleKickedFromGroup);
+        socket.on("participantRemoved", handleParticipantRemoved);
 
         return () => {
             socket.off("connect", handleSetup);
             socket.off("receiveMessage", handleGlobalMessage);
             socket.off("addedToGroup", handleAddedToGroup);
             socket.off("kickedFromGroup", handleKickedFromGroup);
+            socket.on("participantRemoved", handleParticipantRemoved);
         };
     }, [user, setRooms, activeRoom]);
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import NewChatModal from "./NewChatModal";
+import ConfirmModal from "./ConfirmModal";
 
 export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom, searchQuery, setSearchQuery, setSearchTrigger}) {
     const token = localStorage.getItem("jwtToken");
@@ -7,6 +8,29 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
 
     const [isSearching, setIsSearching] = useState(false);
     const searchInputRef = useRef(null);
+    
+    const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
+    const optionsMenuRef = useRef(null);
+
+    const [confirmConfig, setConfirmConfig] = useState({
+        isOpen: false,
+        title: "",
+        message: "",
+        confirmText: "",
+        action: null
+    });
+    
+    const closeConfirmModal = () => setConfirmConfig({ ...confirmConfig, isOpen: false });
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target)) {
+                setIsOptionsMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if(isSearching && searchInputRef.current) {
@@ -22,13 +46,65 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
     const handleRoomCreated = (response) => {
         if(response.isNew) {
             setRooms((prevRooms) => [response.room, ...prevRooms]);
+        } else {
+            setRooms((prevRooms) => prevRooms.map(r => 
+                String(r.id) === String(response.room.id) ? response.room : r
+            ));
         }
 
         onSelectRoom(response.room);
     }
 
+    const handleLeaveRoom = async () => {
+        setIsOptionsMenuOpen(true);
+
+        setConfirmConfig({
+            isOpen: true,
+            title: isGroup ? "Leave Group" : "Delete Chat",
+            message: isGroup 
+                ? "Are you sure you want to leave this group? You will no longer receive messages from these participants." 
+                : "Are you sure you want to permanently delete this conversation from your inbox?",
+            confirmText: isGroup ? "Leave Group" : "Delete Chat",
+            action: async () => {
+                try {
+                    const res = await fetch('/api/leaveRoom', {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                        body: JSON.stringify({ roomId: activeRoom.id })
+                    });
+                    if (!res.ok) console.error("Failed to leave room");
+                } catch(err) {
+                    console.error("Network error while leaving room:", err);
+                }
+            }
+        });
+    }
+
+    const handleDeleteRoom = () => {
+        setIsOptionsMenuOpen(false);
+        
+        setConfirmConfig({
+            isOpen: true,
+            title: "Delete Group",
+            message: "Are you sure you want to permanently delete this group? This will erase the chat for EVERYONE and cannot be undone.",
+            confirmText: "Delete Everywhere",
+            action: async () => {
+                try {
+                    const res = await fetch('/api/deleteRoom', {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                        body: JSON.stringify({ roomId: activeRoom.id })
+                    });
+                    if (!res.ok) console.error("Failed to delete room");
+                } catch(err) {
+                    console.error("Network error while deleting room:", err);
+                }
+            }
+        });
+    }
+
     const getAvatarColor = (name) => {
-        if(!name) return 'bg[#8444f6]';
+        if(!name) return 'bg-[#8444f6]';
 
         const colors = [
             'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
@@ -47,6 +123,9 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
     if(!activeRoom) return null;
 
     const isGroup = activeRoom.type === 'GROUP';
+
+    const myParticipantData = activeRoom.participants?.find(p => p.user.email === user.email);
+    const iAmAdmin = myParticipantData?.role === 'ADMIN';
 
     const otherParticipant = !isGroup
         ? activeRoom.participants?.find(p => p.user.email !== user.email)?.user
@@ -190,13 +269,52 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                         </button>
 
                         {/* More Options*/}
-                        <button className="hover:text-[#e1e1e3] transition-colors ml-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="1"></circle>
-                                <circle cx="12" cy="5" r="1"></circle>
-                                <circle cx="12" cy="19" r="1"></circle>
-                            </svg>
-                        </button>
+                        <div className="relative ml-1" ref={optionsMenuRef}>
+                            <button 
+                                onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+                                className={`transition-colors p-1.5 rounded-lg ${isOptionsMenuOpen ? 'bg-white/10 text-[#e1e1e3]' : 'hover:text-[#e1e1e3] hover:bg-white/5'}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="1"></circle>
+                                    <circle cx="12" cy="5" r="1"></circle>
+                                    <circle cx="12" cy="19" r="1"></circle>
+                                </svg>
+                            </button>
+
+                            {isOptionsMenuOpen && (
+                                <div className="absolute right-0 top-[120%] w-48 bg-[#161618] border border-[#2c2c2f] rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button 
+                                        onClick={handleLeaveRoom}
+                                        className="w-full text-left px-4 py-3 text-[#e1e1e3] hover:bg-white/5 transition-colors text-[13px] font-medium flex items-center gap-2.5"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                            <polyline points="16 17 21 12 16 7"></polyline>
+                                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                                        </svg>
+                                        {isGroup ? "Leave Group" : "Delete Chat"}
+                                    </button>
+
+                                    {isGroup && iAmAdmin && (
+                                        <>
+                                            <div className="w-full h-[1px] bg-[#2c2c2f]"></div>
+                                            <button 
+                                                onClick={handleDeleteRoom}
+                                                className="w-full text-left px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-[13px] font-medium flex items-center gap-2.5"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                </svg>
+                                                Delete Group
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </>
                 )}
             </div>
@@ -208,6 +326,15 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                 addMember={true}
                 onRoomCreated={handleRoomCreated}
                 activeRoom={activeRoom}
+            />
+            <ConfirmModal
+                isOpen={confirmConfig.isOpen}
+                onClose={closeConfirmModal}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                confirmText={confirmConfig.confirmText}
+                onConfirm={confirmConfig.action}
+                isDestructive={true} 
             />
         </section>
     )

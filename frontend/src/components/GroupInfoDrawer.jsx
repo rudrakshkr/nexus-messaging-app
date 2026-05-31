@@ -201,7 +201,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
     }   
 
     const getAvatarColor = (name) => {
-        if(!name) return 'bg[#8444f6]';
+        if(!name) return 'bg-[#8444f6]';
 
         const colors = [
             'bg-[#ff5630]', 'bg-[#36b37e]', 'bg-[#00b8d9]', 
