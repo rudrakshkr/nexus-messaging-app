@@ -3,6 +3,8 @@ import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
 
+let globalMessagesCache = {};
+
 export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, roomId, user, isDrawerOpen, setIsDrawerOpen, searchQuery = "", searchTrigger }) {
     const token = localStorage.getItem("jwtToken");
 
@@ -32,6 +34,14 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         ? activeRoom?.participants?.find(p => p.user.email !== user.email)?.user
         : null;
     const displayName = isGroup ? activeRoom?.subject : otherParticipant?.fullname;
+
+    useEffect(() => {
+        if(roomId && messages.length > 0) {
+            if(String(messages[0].roomId) === String(roomId)) {
+                globalMessagesCache[roomId] = messages;
+            }
+        }
+    }, [messages, roomId]);
 
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -87,11 +97,18 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     // 2. FETCH HISTORY BY ROOM ID
     useEffect(() => {
         if(!roomId) return;
-        setMessages([]);
 
         const fetchMessageHistory = async () => {
             try {
-                setIsLoadingMessages(true);
+                if (globalMessagesCache[roomId]) {
+                    console.log(globalMessagesCache[roomId])
+                    setMessages(globalMessagesCache[roomId]);
+                    setIsLoadingMessages(false);
+                } else {
+                    setMessages([]);
+                    setIsLoadingMessages(true);
+                }
+
                 const res = await fetch(`/api/messages/${roomId}`, {
                     method: 'GET',
                     headers: {
@@ -101,7 +118,11 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                 });
                 if(res.ok) {
                     const history = await res.json();
-                    setMessages(history);
+
+                    if (JSON.stringify(history) !== JSON.stringify(globalMessagesCache[roomId])) {
+                        setMessages(history);
+                        globalMessagesCache[roomId] = history;
+                    }
                 }
             } catch(err) {
                 console.error("Fetch error: ", err);

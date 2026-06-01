@@ -4,6 +4,8 @@ import ChatMessages from "../components/ChatMessages"
 import { useState, useEffect } from "react"
 import { socket } from "../socket"
 
+let globalRoomsCache = null;
+
 export default function ChatPage({user, setUser}) {
     const token = localStorage.getItem("jwtToken");
     const [activeRoom, setActiveRoom] = useState(null);
@@ -14,6 +16,12 @@ export default function ChatPage({user, setUser}) {
 
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if(rooms.length > 0) {
+            globalRoomsCache = rooms;
+        }
+    }, [rooms]);
 
     useEffect(() => {
         if (!user || !user.id) return;
@@ -142,7 +150,13 @@ export default function ChatPage({user, setUser}) {
     useEffect(() => {
         const fetchRooms = async () => {
             try {
-                setIsLoading(true);
+                if (globalRoomsCache) {
+                    setRooms(globalRoomsCache);
+                    setIsLoading(false); 
+                } else {
+                    setIsLoading(true); 
+                }
+
                 const res = await fetch(`/api/getRooms`, {
                     method: 'GET',
                     headers: {
@@ -153,7 +167,9 @@ export default function ChatPage({user, setUser}) {
 
                 if(!res.ok) throw new Error("Failed to fetch rooms.");
                 const data = await res.json();
+                
                 setRooms(data.rooms);
+                globalRoomsCache = data.rooms
             } catch(err) {
                 console.error("Fetch error: ", err);
             } finally {
