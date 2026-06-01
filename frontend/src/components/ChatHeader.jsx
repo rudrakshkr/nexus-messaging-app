@@ -55,8 +55,24 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
         onSelectRoom(response.room);
     }
 
-    const handleLeaveRoom = async () => {
-        setIsOptionsMenuOpen(true);
+    const handleLeaveRoom = () => {
+        setIsOptionsMenuOpen(false);
+        const adminCount = activeRoom.participants?.filter(p => p.role === 'ADMIN').length;
+
+        // 2. Prevent the last admin from leaving and orphaning the group
+        if (isGroup && iAmAdmin && adminCount === 1) {
+            setConfirmConfig({
+                isOpen: true,
+                title: "Action Required",
+                message: activeRoom.participants.length === 1 
+                    ? "You are the only person left in this group. Please use the 'Delete Group' option instead."
+                    : "You are the only Admin. Please promote another member to Admin in the Group Info menu before leaving, or permanently delete the group.",
+                confirmText: "Understood",
+                isDestructive: false,
+                action: () => {}
+            });
+            return;
+        }
 
         setConfirmConfig({
             isOpen: true,
@@ -65,6 +81,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                 ? "Are you sure you want to leave this group? You will no longer receive messages from these participants." 
                 : "Are you sure you want to permanently delete this conversation from your inbox?",
             confirmText: isGroup ? "Leave Group" : "Delete Chat",
+            isDestructive: true,
             action: async () => {
                 try {
                     const res = await fetch('/api/leaveRoom', {
