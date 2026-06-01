@@ -290,8 +290,26 @@ async function editProfile(req, res, next) {
             where: {
                 id: myUserId
             },
-            data: updateData
+            data: updateData,
+            select: {
+                id: true,
+                fullname: true,
+                email: true,
+                avatar: true
+            }
         })
+
+        const userRooms = await prisma.roomParticipant.findMany({
+            where: { userId: myUserId },
+            select: { roomId: true }
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            userRooms.forEach(room => {
+                io.to(`room_${room.roomId}`).emit("userProfileUpdated", updatedUser);
+            });
+        }
 
         return res.status(200).json({
             message: "Profile updated successfully",
