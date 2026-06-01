@@ -91,17 +91,51 @@ export default function ChatPage({user, setUser}) {
             });
         };
 
+        const handleUserProfileUpdated = (updatedUser) => {
+            setRooms(prevRooms => prevRooms.map(room => {
+                const hasUser = room.participants?.some(p => String(p.user.id) === String(updatedUser.id));
+                if (!hasUser) return room;
+
+                return {
+                    ...room,
+                    participants: room.participants.map(p => 
+                        String(p.user.id) === String(updatedUser.id) 
+                            ? { ...p, user: updatedUser }
+                            : p
+                    )
+                };
+            }));
+
+            setActiveRoom(prevActive => {
+                if (!prevActive) return prevActive;
+                
+                const hasUser = prevActive.participants?.some(p => String(p.user.id) === String(updatedUser.id));
+                if (!hasUser) return prevActive;
+
+                return {
+                    ...prevActive,
+                    participants: prevActive.participants.map(p => 
+                        String(p.user.id) === String(updatedUser.id) 
+                            ? { ...p, user: updatedUser } 
+                            : p
+                    )
+                };
+            });
+        };
+
         socket.on("receiveMessage", handleGlobalMessage);
         socket.on("addedToGroup", handleAddedToGroup);
         socket.on("kickedFromGroup", handleKickedFromGroup);
         socket.on("participantRemoved", handleParticipantRemoved);
+        socket.on("userProfileUpdated", handleUserProfileUpdated);
 
         return () => {
             socket.off("connect", handleSetup);
             socket.off("receiveMessage", handleGlobalMessage);
             socket.off("addedToGroup", handleAddedToGroup);
             socket.off("kickedFromGroup", handleKickedFromGroup);
-            socket.on("participantRemoved", handleParticipantRemoved);
+            socket.off("participantRemoved", handleParticipantRemoved);
+            socket.off("userProfileUpdated", handleUserProfileUpdated);
         };
     }, [user, setRooms, activeRoom]);
 

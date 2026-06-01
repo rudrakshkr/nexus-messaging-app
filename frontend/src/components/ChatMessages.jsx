@@ -146,14 +146,29 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             setTypingUsers((prev) => prev.filter((name) => name !== fullname));
         };
 
+        const handleUserProfileUpdated = (updatedUser) => {
+            setMessages((prev) => prev.map(msg => {
+                if (msg.senderEmail === updatedUser.email) {
+                    return {
+                        ...msg,
+                        fullname: updatedUser.fullname,
+                        avatar: updatedUser.avatar
+                    };
+                }
+                return msg;
+            }));
+        };
+
         socket.on("receiveMessage", handleIncomingMessage);
         socket.on("userTyping", handleUserTyping);
         socket.on("userStoppedTyping", handleUserStoppedTyping);
+        socket.on("userProfileUpdated", handleUserProfileUpdated);
 
         return () => {
             socket.off("receiveMessage", handleIncomingMessage);
             socket.off("userTyping", handleUserTyping);
             socket.off("userStoppedTyping", handleUserStoppedTyping);
+            socket.off("userProfileUpdated", handleUserProfileUpdated);
         }
     }, [roomId]);
 
