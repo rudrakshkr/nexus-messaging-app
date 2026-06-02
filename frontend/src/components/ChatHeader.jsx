@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import NewChatModal from "./NewChatModal";
 import ConfirmModal from "./ConfirmModal";
 
-export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom, searchQuery, setSearchQuery, setSearchTrigger}) {
+export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom, searchQuery, setSearchQuery, setSearchTrigger, onlineUsers=[]}) {
     const token = localStorage.getItem("jwtToken");
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
@@ -148,12 +148,13 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
         ? activeRoom.participants?.find(p => p.user.email !== user.email)?.user
         : null;
 
+    const isOnline = !isGroup && otherParticipant && onlineUsers.includes(otherParticipant.id);    
     const displayName = isGroup ? activeRoom.subject : otherParticipant?.fullname;
     const displayAvatar = isGroup ? activeRoom.avatar : otherParticipant?.avatar;
     
     const subtitle = isGroup
         ? `${activeRoom.participants?.length} members`
-        : "Active now";
+        : (isOnline ? "Active now" : "Offline");
 
     return (
         <section className="w-full flex items-center justify-between px-6 py-4 border-b border-[#2c2c2f] bg-[#0a0a0a]">
@@ -175,7 +176,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                         />
                     )}
 
-                    {!isGroup && (
+                    {!isGroup && isOnline && (
                         <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
                     )}
                     

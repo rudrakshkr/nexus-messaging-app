@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import NewChatModal from "./NewChatModal";
 import { Link } from "react-router";
 
-export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms, setRooms, isLoading}) {
+export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms, setRooms, isLoading, onlineUsers=[]}) {
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -130,6 +130,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
                                 ? room.participants.find(p => p.user.email !== user.email)?.user
                                 : null;
 
+                            const isOnline = !isGroup && otherParticipant && onlineUsers.includes(otherParticipant.id);
                             const displayName = isGroup ? room.subject : otherParticipant?.fullname;
                             const displayAvatar = isGroup ? room.avatar : otherParticipant?.avatar;
 
@@ -165,7 +166,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
                                             />
                                         )}
 
-                                        {!isGroup && (
+                                        {!isGroup && isOnline && (
                                             <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00d97e] border-2 border-[#161618] rounded-full"></span>
                                         )}
                                         

@@ -4,6 +4,7 @@ const http = require("http")
 const path = require("node:path");
 const cors = require("cors");
 const indexRouter = require("./routes/indexRouter.js");
+const onlineUsers = new Set();
 
 const CustomNotFoundError = require('./errors/CustomNotFoundError.js');
 
@@ -41,7 +42,15 @@ io.on("connection", (socket) => {
 
   // Users joining room after their own room id
   socket.on("setup", async (myUserId) => {
-    socket.join(`user_${myUserId}`);
+    const parsedId = parseInt(myUserId);
+    
+    socket.userId = parsedId;
+
+    socket.join(`user_${parsedId}`);
+
+    onlineUsers.add(parsedId);
+
+    socket.emit("getOnlineUsers", Array.from(onlineUsers))
     
     try {
       const userRooms = await prisma.roomParticipant.findMany({
@@ -51,6 +60,11 @@ io.on("connection", (socket) => {
 
       userRooms.forEach((participant) => {
         socket.join(`room_${participant.roomId}`);
+
+        socket.to(`room_${participant.roomId}`).emit("userStatusChanged", {
+          userId: parsedId,
+          isOnline: true
+        })
       })
 
       console.log(`User ${myUserId} joined personal room and ${userRooms.length} active chats.`);
@@ -127,7 +141,29 @@ io.on("connection", (socket) => {
   });
 
   // Disconnect
-  socket.on("disconnect", () => console.log(`User disconnected: ${socket.id}`));
+  socket.on("disconnect", async () => {
+    console.log(`User disconnected: ${socket.id}`)
+
+    if(socket.userId) {
+      onlineUsers.delete(socket.userId);
+    }
+
+    try {
+      const userRooms = await prisma.roomParticipant.findMany({
+          where: { userId: socket.userId },
+          select: { roomId: true }
+        });
+
+        userRooms.forEach((participant) => {
+          io.to(`room_${participant.roomId}`).emit("userStatusChanged", {
+            userId: socket.userId,
+            isOnline: false
+          });
+        });
+    } catch (err) {
+      console.error("Error broadcasting offline status:", err);
+    }
+  });
 })
 
 const assetsPath = path.join(__dirname, "public");

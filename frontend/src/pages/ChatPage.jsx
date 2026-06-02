@@ -17,6 +17,8 @@ export default function ChatPage({user, setUser}) {
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [onlineUsers, setOnlineUsers] = useState([]);
+
     useEffect(() => {
         if(rooms.length > 0) {
             globalRoomsCache = rooms;
@@ -138,11 +140,27 @@ export default function ChatPage({user, setUser}) {
             });
         };
 
+        const handleGetOnlineUsers = (userIds) => {
+            setOnlineUsers(userIds);
+        };
+
+        const handleUserStatusChanged = ({ userId, isOnline }) => {
+            setOnlineUsers(prev => {
+                if (isOnline) {
+                    return prev.includes(userId) ? prev : [...prev, userId];
+                } else {
+                    return prev.filter(id => id !== userId);
+                }
+            });
+        };
+
         socket.on("receiveMessage", handleGlobalMessage);
         socket.on("addedToGroup", handleAddedToGroup);
         socket.on("kickedFromGroup", handleKickedFromGroup);
         socket.on("participantRemoved", handleParticipantRemoved);
         socket.on("userProfileUpdated", handleUserProfileUpdated);
+        socket.on("getOnlineUsers", handleGetOnlineUsers);
+        socket.on("userStatusChanged", handleUserStatusChanged);
 
         return () => {
             socket.off("connect", handleSetup);
@@ -151,6 +169,8 @@ export default function ChatPage({user, setUser}) {
             socket.off("kickedFromGroup", handleKickedFromGroup);
             socket.off("participantRemoved", handleParticipantRemoved);
             socket.off("userProfileUpdated", handleUserProfileUpdated);
+            socket.off("getOnlineUsers", handleGetOnlineUsers);
+            socket.off("userStatusChanged", handleUserStatusChanged);
         };
     }, [user, setRooms, activeRoom]);
 
@@ -216,6 +236,7 @@ export default function ChatPage({user, setUser}) {
                 rooms={rooms}
                 setRooms={setRooms}
                 isLoading={isLoading}
+                onlineUsers={onlineUsers}
             />
             
             <section className="flex flex-col flex-[5] border-l border-[#2c2c2f]">
@@ -231,6 +252,7 @@ export default function ChatPage({user, setUser}) {
                             searchQuery={searchQuery}
                             setSearchQuery={setSearchQuery}
                             setSearchTrigger={setSearchTrigger}
+                            onlineUsers={onlineUsers}
                         />
                         
                         {/* Chat Messages */}
