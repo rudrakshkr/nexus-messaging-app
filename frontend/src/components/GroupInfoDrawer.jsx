@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { TailSpin } from "react-loader-spinner";
+import ConfirmModal from "./ConfirmModal";
 
 export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onUpdateRoomInfo}) {
     const token = localStorage.getItem("jwtToken");
@@ -12,6 +13,13 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [updatingUserId, setUpdatingUserId] = useState(null);
     const [notification, setNotification] = useState("");
+    const [confirmConfig, setConfirmConfig] = useState({
+        isOpen: false,
+        title: "",
+        message: "",
+        confirmText: "",
+        action: null
+    });
 
     const nameInputRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -25,6 +33,8 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
     useEffect(() => {
         setTempGroupName(room?.subject || "");
     }, [room]);
+
+    const closeConfirmModal = () => setConfirmConfig({ ...confirmConfig, isOpen: false });
 
     // Toast notification
     const showToast = (message) => {
@@ -162,43 +172,52 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
         }
     };
 
-    const handleUserKick = async (targetUserId) => {
-        const isConfirmed = window.confirm("Are you sure you want to kick this user");
-        if(!isConfirmed) return;
+    const handleUserKick = (targetUserId) => {
+        const targetUser = room.participants.find(p => p.user.id === targetUserId)?.user;
+        const targetUserName = targetUser?.fullname || "this user";
 
-        try {
-            const res = await fetch('/api/kickGroupUser', {
-                method: "DELETE",
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}` 
-                },
-                body: JSON.stringify({
-                    roomId: room.id,
-                    userId: targetUserId
-                })
-            })
+        setConfirmConfig({
+            isOpen: true,
+            title: "Remove Participant",
+            message: `Are you sure you want to remove ${targetUserName} from the group?`,
+            confirmText: "Remove User",
+            isDestructive: true,
+            action: async () => {
+                try {
+                    const res = await fetch('/api/kickGroupUser', {
+                        method: "DELETE",
+                        headers: { 
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({
+                            roomId: room.id,
+                            userId: targetUserId
+                        })
+                    });
 
-            if(res.ok) {
-                showToast("Kicked out user from the group!");
+                    if(res.ok) {
+                        showToast("Kicked out user from the group!");
 
-                const updatedParticipants = room.participants.filter(p => 
-                    p.user.id !== targetUserId
-                )
+                        const updatedParticipants = room.participants.filter(p => 
+                            p.user.id !== targetUserId
+                        );
 
-                if(onUpdateRoomInfo) {
-                    onUpdateRoomInfo(room.id, { participants: updatedParticipants });
+                        if(onUpdateRoomInfo) {
+                            onUpdateRoomInfo(room.id, { participants: updatedParticipants });
+                        }
+                    } 
+                    else {
+                        console.error("Failed to kick the user");
+                        showToast("Failed to kick the user");
+                    }
+                } catch(err) {
+                    console.error("Network error while kicking out the user:", err);
+                    showToast("Network error occurred");
                 }
-            } 
-            else {
-                console.error("Failed to kick the user");
-                showToast("Failed to kick the user");
             }
-        } catch(err) {
-            console.error("Network error while kicking out the user:", err);
-            showToast("Network error occurred");
-        }
-    }   
+        });
+    }
 
     const getAvatarColor = (name) => {
         if(!name) return 'bg-[#8444f6]';
@@ -483,6 +502,15 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
                     </div>
                 </div>
             </div>
+            <ConfirmModal
+                isOpen={confirmConfig.isOpen}
+                onClose={closeConfirmModal}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                confirmText={confirmConfig.confirmText}
+                onConfirm={confirmConfig.action}
+                isDestructive={true} 
+            />
         </>
     );
 }

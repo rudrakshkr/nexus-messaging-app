@@ -612,6 +612,12 @@ async function groupUserAdd(req, res, next) {
                             }
                         }
                     }
+                },
+                messages: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    },
+                    take: 1
                 }
             }
         });

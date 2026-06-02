@@ -60,7 +60,14 @@ export default function ChatPage({user, setUser}) {
             
             setRooms((prevRooms) => {
                 const exists = prevRooms.find(r => String(r.id) === String(data.roomData.id));
-                if (!exists) return [data.roomData, ...prevRooms];
+                if (!exists) {
+                    const newRoom = {
+                        ...data.roomData,
+                        messages: data.message ? [data.message] : data.roomData.messages || []
+                    }
+
+                    return [newRoom, ...prevRooms]
+                }
                 return prevRooms;
             });
         };
@@ -167,7 +174,7 @@ export default function ChatPage({user, setUser}) {
 
                 if(!res.ok) throw new Error("Failed to fetch rooms.");
                 const data = await res.json();
-                
+
                 setRooms(data.rooms);
                 globalRoomsCache = data.rooms
             } catch(err) {
