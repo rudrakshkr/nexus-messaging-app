@@ -17,6 +17,7 @@ const {
     groupUserAdd,
     leaveRoom,
     deleteRoom,
+    generativeIntelligence,
     createRoom,
 } = require("../controllers/indexController");
 
@@ -50,5 +51,7 @@ indexRouter.delete('/api/leaveRoom', verifyToken, leaveRoom);
 indexRouter.delete('/api/deleteRoom', verifyToken, deleteRoom);
 indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
+
+indexRouter.get('/api/intelligence/:roomId', generativeIntelligence);
 
 module.exports = indexRouter;

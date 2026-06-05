@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const {body, validationResult, matchedData} = require("express-validator");
 require("dotenv").config({path: ".env"});
 const prisma = require("../lib/prisma.js");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 async function logInPost(req, res) {
     try {
@@ -857,6 +858,73 @@ async function createRoom(req, res, next) {
     }
 }
 
+async function generativeIntelligence(req, res, next) {
+    try {
+        const {roomId} = req.params;
+
+        const recentMessages = await prisma.message.findMany({
+            where: {
+                roomId: parseInt(roomId),
+                type: 'USER'
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: 50,
+            include: {
+                sender: {
+                    select: {
+                        fullname: true
+                    }
+                }
+            }
+        });
+
+        if(recentMessages.length === 0) {
+            return res.status(200).json({summary: "Not enough messages to analyze", tasks: [], links: []});
+        }
+
+        const transcript = recentMessages.reverse()
+            .map(msg => `${msg.sender.fullname}: ${msg.text}`)
+            .join('\n');
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        
+        const model = genAI.getGenerativeModel({model: "gemini-3.5-flash"});
+
+        const systemPrompt = `
+            Analyze the following chat transcript and extract key information. 
+            You MUST respond ONLY with a valid JSON object matching this exact structure:
+            {
+                "summary": "A 2-3 sentence summary of the conversation.",
+                "tasks": [
+                    { "title": "Task description", "dueDate": "Extracted date or 'No date'" }
+                ],
+                "links": [
+                    { "title": "Context of the link", "url": "https://..." }
+                ]
+            }
+            
+            Transcript:
+            ${transcript}
+        `;
+
+        const result = await model.generateContent(systemPrompt);
+        
+        const responseText = result.response.text();
+
+        const cleanString = responseText.replace(/```json/g, '').replace(/'''/g, '').trim();
+
+        const parsedData = JSON.parse(cleanString);
+
+        return res.status(200).json(parsedData);
+
+    } catch(err) {
+        console.error("Failed to generate intelligence:", err);
+        return res.status(500).json({ message: "Failed to analyze chat." });
+    }
+}
+
 module.exports = {
     logInPost,
     verifyToken,
@@ -874,5 +942,6 @@ module.exports = {
     groupUserAdd,
     leaveRoom,
     deleteRoom,
+    generativeIntelligence,
     usersGet
 }
