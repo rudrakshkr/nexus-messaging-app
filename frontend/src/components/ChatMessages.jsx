@@ -525,7 +525,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                             key={msg.tempId || msg.id} 
                                             className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
                                         >
-                                            <div className={`flex gap-3 max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <div className={`flex gap-3 max-w-[85%] sm:max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                                                 <div className="w-8 flex-shrink-0 flex items-end">
                                                     {isLastInGroup && (
                                                         msg.avatar ? 
@@ -571,7 +571,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                         )}
 
                                                         {msg.text && (
-                                                            <p className="text-[14px]">
+                                                            <p className="text-[14px] break-words break-all whitespace-pre-wrap">
                                                                 {renderMessageText(msg.text, searchQuery)} 
                                                             </p>
                                                         )}

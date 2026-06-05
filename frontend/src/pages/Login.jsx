@@ -21,6 +21,7 @@ export default function LoginPage({ setUser }) {
 
     useEffect(() => {
         if(successMessage) {
+            console.log(successMessage)
             setShowBanner(true);
             setIsFadingOut(false);
 
@@ -63,14 +64,16 @@ export default function LoginPage({ setUser }) {
             } 
             else {
                 localStorage.setItem('jwtToken', data.token);
-                if (setUser) {
-                    setUser({ auth: true, email: data.email, id: data.id , avatar: data.avatar, fullname: data.fullname});
-                }
+
                 setTimeout(() => {
                     navigate('/', { 
                         state: { successMessage: 'Welcome back! You successfully logged in.' }
                     });
-                }, 10);      
+                }, 10);
+
+                if (setUser) {
+                    setUser({ auth: true, email: data.email, id: data.id , avatar: data.avatar, fullname: data.fullname});
+                }  
             }
         } catch (err) {
             setErrors('Network error. Is the backend running?');

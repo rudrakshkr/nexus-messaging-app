@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import NewChatModal from "./NewChatModal";
 import ConfirmModal from "./ConfirmModal";
 
-export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom, searchQuery, setSearchQuery, setSearchTrigger, onlineUsers=[]}) {
+export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom, searchQuery, setSearchQuery, setSearchTrigger, onlineUsers=[], isIntelligenceOpen, setIsIntelligenceOpen}) {
     const token = localStorage.getItem("jwtToken");
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
@@ -278,11 +278,14 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                             </svg>
                         </button>
 
-                        {/* Sidebar/Layout Icon */}
-                        <button className="hover:text-[#e1e1e3] transition-colors">
+                        {/* AI Intelligence Toggle */}
+                        <button 
+                            onClick={() => setIsIntelligenceOpen(!isIntelligenceOpen)}
+                            className={`transition-colors p-1.5 rounded-lg ${isIntelligenceOpen ? 'bg-[#8444f6]/10 text-[#8444f6]' : 'hover:text-[#8444f6] text-[#8f8f96] hover:bg-white/5'}`}
+                            title="AI Intelligence"
+                        >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="15" y1="3" x2="15" y2="21"></line>
+                                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
                             </svg>
                         </button>
 

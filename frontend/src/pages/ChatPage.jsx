@@ -2,7 +2,9 @@ import Sidebar from "../components/Sidebar"
 import ChatHeader from "../components/ChatHeader"
 import ChatMessages from "../components/ChatMessages"
 import { useState, useEffect } from "react"
+import { useLocation, useNavigate } from "react-router"
 import { socket } from "../socket"
+import IntelligencePanel from "../components/IntelligencePanel"
 
 let globalRoomsCache = null;
 
@@ -18,6 +20,24 @@ export default function ChatPage({user, setUser}) {
     const [isLoading, setIsLoading] = useState(true);
 
     const [onlineUsers, setOnlineUsers] = useState([]);
+
+    const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [notification, setNotification] = useState("");
+
+    useEffect(() => {
+        if (location.state?.successMessage) {
+            setNotification(location.state.successMessage);
+            
+            navigate(location.pathname, { replace: true, state: {} });
+
+            setTimeout(() => {
+                setNotification("");
+            }, 4000);
+        }
+    }, [location.state, navigate]);
 
     useEffect(() => {
         if(rooms.length > 0) {
@@ -208,6 +228,7 @@ export default function ChatPage({user, setUser}) {
 
     const handleRoomSelect = (room) => {
         setActiveRoom(room);
+        setIsIntelligenceOpen(false);
 
         setRooms(prevRooms => 
             prevRooms.map(r => r.id === room.id ? {...r, unreadCount: 0} : r)
@@ -226,8 +247,26 @@ export default function ChatPage({user, setUser}) {
     }
 
     return (
-        <main className="w-full h-screen overflow-hidden flex bg-[#0f0f0f] text-white font-sans">
-            {/* Chat Sidebar  */}
+        <main className="w-full h-screen overflow-hidden flex bg-[#0f0f0f] text-white font-sans relative">
+
+            {/* Toast Notification  */}
+            <div 
+                className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 bg-[#00d97e]/15 border border-[#00d97e]/30 backdrop-blur-md text-[#00d97e] px-4 py-2.5 rounded-xl shadow-[0_10px_30px_rgba(0,217,126,0.15)] transition-all duration-300 ease-out
+                ${notification 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-6 pointer-events-none' 
+                }`}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span className="text-[14px] font-semibold tracking-wide">
+                    {notification}
+                </span>
+            </div>
+            
+            {/* LEFT: Chat Sidebar  */}
             <Sidebar 
                 user={user} 
                 setUser={setUser} 
@@ -239,7 +278,8 @@ export default function ChatPage({user, setUser}) {
                 onlineUsers={onlineUsers}
             />
             
-            <section className="flex flex-col flex-[5] border-l border-[#2c2c2f]">
+            {/* MIDDLE: Chat Area */}
+            <section className="flex flex-col flex-1 min-w-0 border-l border-[#2c2c2f]">
                 {activeRoom ? (
                     <>
                         {/* CHAT HEADER  */}
@@ -253,6 +293,8 @@ export default function ChatPage({user, setUser}) {
                             setSearchQuery={setSearchQuery}
                             setSearchTrigger={setSearchTrigger}
                             onlineUsers={onlineUsers}
+                            isIntelligenceOpen={isIntelligenceOpen}
+                            setIsIntelligenceOpen={setIsIntelligenceOpen}
                         />
                         
                         {/* Chat Messages */}
@@ -274,6 +316,14 @@ export default function ChatPage({user, setUser}) {
                     </div>
                 )}
             </section>
+
+            {/* RIGHT: AI Intelligence Panel */}
+            <IntelligencePanel 
+                isOpen={isIntelligenceOpen} 
+                onClose={() => setIsIntelligenceOpen(false)}
+                roomId={activeRoom?.id}
+            />
+            
         </main>
     )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import NewChatModal from "./NewChatModal";
 import { Link } from "react-router";
 
@@ -6,14 +6,15 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
     const token = localStorage.getItem("jwtToken");
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
-    const [filter, setFilter] = useState("all")
+    const [filter, setFilter] = useState("all");
 
     const [errors, setErrors] = useState("");
 
     const handleLogout = async (e) => {
         e.preventDefault(e)
         localStorage.removeItem('jwtToken');
-        setUser({auth: false, name: ''})
+        localStorage.removeItem('userData');
+        setUser({auth: false, email: '', id: null, avatar: '', fullname: ''});
     }
 
     const handleRoomCreated = (response) => {
@@ -50,7 +51,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
         : rooms;
 
     return (
-        <section className="flex flex-col flex-1 bg-[#161618] border-r border-[#2c2c2f]">
+        <section className="flex flex-col w-[320px] lg:w-[310px] flex-shrink-0 bg-[#161618] border-r border-[#2c2c2f]">
             <div className="flex items-center justify-between px-4 py-4">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-[#8444f6] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(132,68,246,0.4)] flex-shrink-0">
