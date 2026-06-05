@@ -74,6 +74,10 @@ export default {
       },
       shimmer: {
         '100%': { transform: 'translateX(100%)' }
+      },
+      brimFill: {
+        '0%': { height: '0%' },
+        '100%': { height: '100%' },
       }
     },
     animation: {
@@ -83,6 +87,7 @@ export default {
       'message-pop': 'messagePop 0.25s ease-out forwards',
       'typing-dot': 'typingDot 1.4s ease-in-out infinite',
       'shimmer': 'shimmer 1.5s infinite',
+      'brim-fill': 'brimFill 1s ease-in-out infinite alternate',
     }
   },
   plugins: [require("tailwindcss-animate")],

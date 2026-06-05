@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react"
 import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
+import { TailSpin } from "react-loader-spinner";
 
 let globalMessagesCache = {};
 
@@ -21,12 +22,17 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [errors, setErrors] = useState("");
 
+    const [isMagicMenuOpen, setIsMagicMenuOpen] = useState(false);
+    const [isMagicLoading, setIsMagicLoading] = useState(false);
+
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
     const pickerRef = useRef(null); 
     const buttonRef = useRef(null); 
     const recognitionRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const magicMenuRef = useRef(null);
+    const textareaRef = useRef(null);
 
     // Display logic
     const isGroup = activeRoom?.type === 'GROUP';
@@ -34,6 +40,17 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         ? activeRoom?.participants?.find(p => p.user.email !== user.email)?.user
         : null;
     const displayName = isGroup ? activeRoom?.subject : otherParticipant?.fullname;
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if(magicMenuRef.current && !magicMenuRef.current.contains(event.target)) {
+                setIsMagicMenuOpen(false);
+            }
+
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => document.removeEventListener("mousedown", handleClickOutside);
+        }
+    }, []);
 
     useEffect(() => {
         if(roomId && messages.length > 0) {
@@ -317,6 +334,33 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }, 2000);
     }
 
+    const handleMagicCompose = async (tone) => {
+        if(!inputText.trim()) return;
+
+        setIsMagicLoading(true);
+        setIsMagicMenuOpen(false);
+
+        try {
+            const res = await fetch('/api/magicCompose', {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ text: inputText, tone: tone })
+            });
+
+            if(res.ok) {
+                const data = await res.json();
+                setInputText(data.rewrittenText);
+            }
+        } catch(err) {
+            console.error("Magic compose failed", err);
+        } finally {
+            setIsMagicLoading(false);
+        }
+    }
+
     const sendMessage = async () => {
         if((!inputText.trim() && !selectedFile) || !roomId) return;
 
@@ -330,6 +374,11 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
 
         setInputText("");
+
+        if (textareaRef.current) {
+            textareaRef.current.style.height = '44px';
+        }
+
         removeImage();
         clearTimeout(typingTimeoutRef.current);
         socket.emit("stopTyping", {roomId: roomId, fullname: user.fullname});
@@ -643,6 +692,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                             </div>
                         )}
 
+                        {/* File Input  */}
                         <input 
                             type="file" 
                             name="image"
@@ -661,16 +711,69 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                             </svg>
                         </button>
 
-                        <input 
-                            type="text" 
+                        {/* Text Input  */}
+                        <textarea 
+                            ref={textareaRef}
+                            rows={1}
                             value={inputText}
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
+                            disabled={isMagicLoading} 
                             placeholder={`Message ${displayName?.split(' ')[0] || 'Group'}...`}
-                            className="flex-1 bg-transparent border-none outline-none text-[#e1e1e3] text-[14px] placeholder-[#8f8f96] px-3"
-                        />
+                            className={`flex-1 bg-transparent border-none outline-none text-[#e1e1e3] text-[14px] placeholder-[#8f8f96] px-3 py-2 resize-y min-h-[44px] max-h-[50vh] overflow-y-auto custom-scrollbar transition-all ${isMagicLoading ? 'opacity-30' : ''}`}                        />
 
-                        <div className="flex items-center gap-3 flex-shrink-0 text-[#8f8f96]">
+                        <div className="flex items-center gap-3 flex-shrink-0 text-[#8f8f96] ml-2">
+                            {/* Magic Menu Button  */}
+                            <div className="relative flex items-center" ref={magicMenuRef}>
+                                <button 
+                                    disabled={!inputText.trim() || isMagicLoading}
+                                    onClick={() => setIsMagicMenuOpen(!isMagicMenuOpen)}
+                                    className={`transition-colors flex items-center justify-center relative w-[18px] h-[18px] ${inputText.trim() ? (isMagicMenuOpen ? 'text-[#8444f6]' : 'hover:text-[#8444f6]') : 'opacity-40 cursor-not-allowed'}`}
+                                    title="Magic Compose"
+                                >
+                                    {isMagicLoading ? (
+                                        <>
+                                            {/* 1. The Faded Background Icon */}
+                                            <svg className="absolute inset-0 text-[#8f8f96]/30" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                                                <path d="M5 3v4M7 5H3"/>
+                                            </svg>
+                                            
+                                            {/* 2. The Animated "Filling" Icon */}
+                                            <div className="absolute top-0 left-0 w-full overflow-hidden animate-brim-fill">
+                                                <svg className="text-[#8444f6]" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                                                    <path d="M5 3v4M7 5H3"/>
+                                                </svg>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                                            <path d="M5 3v4M7 5H3"/>
+                                        </svg>
+                                    )}
+                                </button>
+
+                                {isMagicMenuOpen && (
+                                    <div className="absolute bottom-[140%] right-[-40px] w-48 bg-[#161618] border border-[#2c2c2f] rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                        <div className="px-3 py-2 border-b border-[#2c2c2f]">
+                                            <span className="text-[11px] font-bold text-[#8f8f96] uppercase tracking-wider">Rewrite as...</span>
+                                        </div>
+                                        <button onClick={() => handleMagicCompose("professional")} className="w-full text-left px-4 py-2.5 text-[#e1e1e3] hover:bg-white/5 transition-colors text-[13px] font-medium">
+                                            👔 Professional
+                                        </button>
+                                        <button onClick={() => handleMagicCompose("friendly and casual")} className="w-full text-left px-4 py-2.5 text-[#e1e1e3] hover:bg-white/5 transition-colors text-[13px] font-medium">
+                                            👋 Friendly
+                                        </button>
+                                        <button onClick={() => handleMagicCompose("grammatically perfect")} className="w-full text-left px-4 py-2.5 text-[#e1e1e3] hover:bg-white/5 transition-colors text-[13px] font-medium">
+                                            ✨ Fix Grammar
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Emoji Picker Button  */}
                             <button 
                                 ref={buttonRef}
                                 className={`transition-colors ${showEmojiPicker ? 'text-[#8444f6]' : 'hover:text-[#e1e1e3]'}`}
@@ -684,6 +787,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                 </svg>
                             </button>
                             
+                            {/* Voice To Text Button  */}
                             <button 
                                 onClick={toggleListening}
                                 className={`transition-all duration-200 ${
@@ -699,7 +803,8 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                     <line x1="8" y1="23" x2="16" y2="23"></line>
                                 </svg>
                             </button>
-                            
+
+                            {/* Send Message Button  */}
                             <button className="hover:text-[#8444f6] transition-colors" onClick={sendMessage}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -707,6 +812,21 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                 </svg>
                             </button>
                         </div>
+                        {isMagicLoading && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#161618]/60 backdrop-blur-[2px] rounded-xl animate-in fade-in duration-200">
+                                <div className="bg-[#8444f6]/15 border border-[#8444f6]/30 text-[#b488f8] px-3.5 py-1.5 rounded-full text-[12px] font-semibold tracking-wide flex items-center gap-2 shadow-[0_0_15px_rgba(132,68,246,0.15)]">
+                                    <TailSpin
+                                        visible={true}
+                                        height="14"
+                                        width="14"
+                                        color="#b488f8"
+                                        ariaLabel="tail-spin-loading"
+                                        radius="1"
+                                    />
+                                    Rewriting...
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

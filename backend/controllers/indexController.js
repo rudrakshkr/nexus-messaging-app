@@ -925,6 +925,39 @@ async function generativeIntelligence(req, res, next) {
     }
 }
 
+async function magicCompose(req, res, next) {
+    try {
+        const {text, tone} = req.body;
+
+        if(!text || text.trim() === "") {
+            return res.status(400).json({ message: "No text provided to rewrite." });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({model: "gemini-3.5-flash"});
+
+        const prompt = `
+            You are an expert copywriter built into a chat application. 
+            Rewrite the following text using a "${tone}" tone.
+            Rules:
+            1. Respond ONLY with the rewritten text.
+            2. Do not use quotes around the text.
+            3. Do not include any conversational filler.
+            
+            Original Text:
+            ${text}
+        `;
+
+        const result = await model.generateContent(prompt);
+        const rewrittenText = result.response.text().trim();
+
+        return res.status(200).json({rewrittenText});
+    } catch(err) {
+        console.error("Magic Compose Error:", err);
+        return res.status(500).json({ message: "Failed to rewrite text" });
+    }
+}
+
 module.exports = {
     logInPost,
     verifyToken,
@@ -943,5 +976,6 @@ module.exports = {
     leaveRoom,
     deleteRoom,
     generativeIntelligence,
+    magicCompose,
     usersGet
 }

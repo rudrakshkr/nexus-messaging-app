@@ -18,6 +18,7 @@ const {
     leaveRoom,
     deleteRoom,
     generativeIntelligence,
+    magicCompose,
     createRoom,
 } = require("../controllers/indexController");
 
@@ -53,5 +54,6 @@ indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
 indexRouter.get('/api/intelligence/:roomId', generativeIntelligence);
+indexRouter.post('/api/magicCompose', verifyToken, magicCompose);
 
 module.exports = indexRouter;
