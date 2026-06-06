@@ -28,6 +28,19 @@ const uploadMiddleware = require("../uploadMiddleware");
 // Initialise the middleware and pass folder name as argument
 const upload = uploadMiddleware("uploads")
 
+// Rate limit AI requests
+const rateLimit = require('express-rate-limit');
+
+const magicComposeLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10,
+    message: {
+        message: "You are doing that too much! Please wait 10 minutes before using Magic Compose again."
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+})
+
 // --------------------------------------- ROUTES -------------------------------------------------------
 
 // Public Routes
@@ -54,6 +67,6 @@ indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
 indexRouter.get('/api/intelligence/:roomId', generativeIntelligence);
-indexRouter.post('/api/magicCompose', verifyToken, magicCompose);
+indexRouter.post('/api/magicCompose', verifyToken, magicComposeLimiter, magicCompose);
 
 module.exports = indexRouter;
