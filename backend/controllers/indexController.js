@@ -870,7 +870,7 @@ async function generativeIntelligence(req, res, next) {
             orderBy: {
                 createdAt: 'desc'
             },
-            take: 50,
+            take: 100,
             include: {
                 sender: {
                     select: {
@@ -891,14 +891,22 @@ async function generativeIntelligence(req, res, next) {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         
         const model = genAI.getGenerativeModel({model: "gemini-3.1-flash-lite"});
+        
+        const today = new Date().toISOString();
 
         const systemPrompt = `
             Analyze the following chat transcript and extract key information. 
+            Today's current date and time in ISO format is: ${today}. Use this to calculate relative dates like "tomorrow" or "next week".
+            
             You MUST respond ONLY with a valid JSON object matching this exact structure:
             {
                 "summary": "A 2-3 sentence summary of the conversation.",
                 "tasks": [
-                    { "title": "Task description", "dueDate": "Extracted date or 'No date'" }
+                    { 
+                        "title": "Task description", 
+                        "dueDate": "Friendly extracted date (e.g., 'Tomorrow', 'Oct 12') or 'No date'",
+                        "isoDate": "An exact Google Calendar format string (YYYYMMDDTHHMMSSZ) based on the due date. If there is no specific time, default to 090000Z. If there is 'No date', make this null."
+                    }
                 ],
                 "links": [
                     { "title": "Context of the link", "url": "https://..." }
@@ -934,7 +942,7 @@ async function magicCompose(req, res, next) {
         }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({model: "gemini-3.5-flash"});
+        const model = genAI.getGenerativeModel({model: "gemini-3.1-flash-lite"});
 
         const prompt = `
             You are an expert copywriter built into a chat application. 

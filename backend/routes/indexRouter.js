@@ -32,14 +32,24 @@ const upload = uploadMiddleware("uploads")
 const rateLimit = require('express-rate-limit');
 
 const magicComposeLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
+    windowMs: 5 * 60 * 1000,
     max: 10,
     message: {
-        message: "You are doing that too much! Please wait 10 minutes before using Magic Compose again."
+        message: "You are doing that too much! Please wait 5 minutes before using Magic Compose again."
     },
     standardHeaders: true,
     legacyHeaders: false
 })
+
+const extractTasksLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { 
+        message: "You've analyzed a lot of data recently! Please wait 15 minutes to prevent API exhaustion." 
+    },
+    standardHeaders: true, 
+    legacyHeaders: false, 
+});
 
 // --------------------------------------- ROUTES -------------------------------------------------------
 
@@ -66,7 +76,7 @@ indexRouter.delete('/api/deleteRoom', verifyToken, deleteRoom);
 indexRouter.post('/api/addGroupUser', verifyToken, groupUserAdd);
 indexRouter.post('/api/createRoom', verifyToken, createRoom);
 
-indexRouter.get('/api/intelligence/:roomId', generativeIntelligence);
+indexRouter.get('/api/intelligence/:roomId', verifyToken, extractTasksLimiter, generativeIntelligence);
 indexRouter.post('/api/magicCompose', verifyToken, magicComposeLimiter, magicCompose);
 
 module.exports = indexRouter;
