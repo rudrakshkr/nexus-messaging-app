@@ -126,7 +126,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         const fetchMessageHistory = async () => {
             try {
                 if (globalMessagesCache[roomId]) {
-                    console.log(globalMessagesCache[roomId])
                     setMessages(globalMessagesCache[roomId]);
                     setIsLoadingMessages(false);
                 } else {
@@ -416,7 +415,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
 
         setMessages((prev) => [...prev, optimisticMsg]);
-        console.log(optimisticMsg)
 
         let finalImageUrl = null;
 
