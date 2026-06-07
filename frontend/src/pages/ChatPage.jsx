@@ -106,6 +106,56 @@ export default function ChatPage({user, setUser}) {
             });
         };
 
+        const handleRoleUpdate = (data) => {
+            const {userId, newRole} = data;
+            console.log(activeRoom);
+
+            setActiveRoom((prevRoom) => {
+                if(!prevRoom || !prevRoom.participants) return prevRoom;
+
+                return {
+                    ...prevRoom,
+                    participants: prevRoom.participants.map((participant) => 
+                        participant.userId === userId
+                        ? {...participant, role: newRole}
+                        : participant
+                    )
+                };
+            });
+        };
+
+        const handleGroupNameUpdate = (data) => {
+            const { roomId, subject } = data;
+
+            setActiveRoom((prevRoom) => {
+                if(prevRoom && String(prevRoom.id) === String(roomId)) {
+                    return {...prevRoom, subject: subject}
+                }
+
+                return prevRoom;
+            });
+
+            // Update sidebar 
+            setRooms((prevRooms) => prevRooms.map(room => 
+                String(room.id) === String(roomId) ? { ...room, subject: subject } : room
+            ));
+        };
+
+        const handleGroupAvatarUpdate = (data) => {
+            const { roomId, avatar } = data;
+
+            setActiveRoom((prevRoom) => {
+                if (prevRoom && String(prevRoom.id) === String(roomId)) {
+                    return { ...prevRoom, avatar: avatar };
+                }
+                return prevRoom;
+            });
+
+            setRooms((prevRooms) => prevRooms.map(room => 
+                String(room.id) === String(roomId) ? { ...room, avatar: avatar } : room
+            ));
+        };
+
         const handleParticipantRemoved = (data) => {
             setRooms(prevRooms => prevRooms.map(room => {
                 if (String(room.id) === String(data.roomId)) {
@@ -181,6 +231,9 @@ export default function ChatPage({user, setUser}) {
         socket.on("userProfileUpdated", handleUserProfileUpdated);
         socket.on("getOnlineUsers", handleGetOnlineUsers);
         socket.on("userStatusChanged", handleUserStatusChanged);
+        socket.on("roleUpdated", handleRoleUpdate);
+        socket.on("groupNameUpdated", handleGroupNameUpdate);
+        socket.on("groupAvatarUpdated", handleGroupAvatarUpdate);
 
         return () => {
             socket.off("connect", handleSetup);
@@ -191,6 +244,9 @@ export default function ChatPage({user, setUser}) {
             socket.off("userProfileUpdated", handleUserProfileUpdated);
             socket.off("getOnlineUsers", handleGetOnlineUsers);
             socket.off("userStatusChanged", handleUserStatusChanged);
+            socket.off("roleUpdated", handleRoleUpdate);
+            socket.off("groupNameUpdated", handleGroupNameUpdate);
+            socket.off("groupAvatarUpdated", handleGroupAvatarUpdate);
         };
     }, [user, setRooms, activeRoom]);
 

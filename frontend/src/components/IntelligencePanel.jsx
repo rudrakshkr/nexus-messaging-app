@@ -89,7 +89,7 @@ export default function IntelligencePanel({ isOpen, onClose, roomId }) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8444f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
                     </svg>
-                    <h2 className="text-[15px] font-semibold">Intelligence</h2>
+                    <h2 className="text-[15px] font-semibold">Nexus Copilot</h2>
                 </div>
                 <button onClick={onClose} className="text-[#8f8f96] hover:text-[#e1e1e3] transition-colors p-1.5 rounded-md hover:bg-white/5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

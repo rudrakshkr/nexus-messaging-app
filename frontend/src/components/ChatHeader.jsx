@@ -271,6 +271,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                         <button 
                             onClick={() => setIsSearching(true)}
                             className="hover:text-[#e1e1e3] transition-colors"
+                            title="Search"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="11" cy="11" r="8"></circle>
@@ -282,7 +283,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                         <button 
                             onClick={() => setIsIntelligenceOpen(!isIntelligenceOpen)}
                             className={`transition-colors p-1.5 rounded-lg ${isIntelligenceOpen ? 'bg-[#8444f6]/10 text-[#8444f6]' : 'hover:text-[#8444f6] text-[#8f8f96] hover:bg-white/5'}`}
-                            title="AI Intelligence"
+                            title="Nexus Copilot"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
@@ -294,6 +295,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
                             <button 
                                 onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
                                 className={`transition-colors p-1.5 rounded-lg ${isOptionsMenuOpen ? 'bg-white/10 text-[#e1e1e3]' : 'hover:text-[#e1e1e3] hover:bg-white/5'}`}
+                                title="Options"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="1"></circle>
