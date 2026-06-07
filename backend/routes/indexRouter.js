@@ -32,10 +32,10 @@ const upload = uploadMiddleware("uploads")
 const rateLimit = require('express-rate-limit');
 
 const magicComposeLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000,
+    windowMs: 10 * 60 * 1000,
     max: 10,
     message: {
-        message: "You are doing that too much! Please wait 5 minutes before using Magic Compose again."
+        message: "You are doing that too much! Please wait 10 minutes before using Magic Compose again."
     },
     standardHeaders: true,
     legacyHeaders: false

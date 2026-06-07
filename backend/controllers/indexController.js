@@ -367,6 +367,10 @@ async function updateGroupAvatar(req, res, next) {
         const io = req.app.get("io");
         if(io) {
             io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+            io.to(`room_${roomId}`).emit("groupAvatarUpdated", {
+                roomId: parseInt(roomId),
+                avatar: req.file.path
+            });
         }
         
         const uploadedUrl = req.file.path;
@@ -415,6 +419,10 @@ async function updateGroupName(req, res, next) {
         const io = req.app.get("io");
         if(io) {
             io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+            io.to(`room_${roomId}`).emit("groupNameUpdated", {
+                roomId: parseInt(roomId),
+                subject: subject
+            });
         }
 
         return res.status(200).json({ 
@@ -480,6 +488,10 @@ async function updateGroupAdmin(req, res, next) {
         const io = req.app.get("io");
         if(io) {
             io.to(`room_${roomId}`).emit("receiveMessage", formattedMessage);
+            io.to(`room_${roomId}`).emit("roleUpdated", {
+                userId: userId,
+                newRole: role
+            });
         }
 
         return res.status(200).json({
