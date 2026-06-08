@@ -196,38 +196,45 @@ async function roomIdGet(req, res, next) {
         const myUserId = parseInt(req.user.id);
         const roomId = parseInt(req.params.roomId);
 
-        const sharedRoom = await prisma.room.findFirst({
+        const cursor = req.query.cursor ? parseInt(req.query.cursor) : null;
+
+        const participant = await prisma.roomParticipant.findFirst({
+            where: { 
+                roomId: roomId, 
+                userId: myUserId 
+            }
+        })
+
+        if (!participant) {
+            return res.status(403).json({ message: "Not authorized to view this room." });
+        }
+
+        const messages = await prisma.message.findMany({
             where: {
-                id: roomId,
-                participants: {
-                    some: {
-                        userId: myUserId
-                    }
+                roomId: roomId
+            },
+            take: 50,
+            ...(cursor && {
+                skip: 1,
+                cursor: {
+                    id: cursor
                 }
+            }),
+            orderBy: {
+                createdAt: 'desc'
             },
             include: {
-                messages: {
-                    orderBy: {
-                        createdAt: 'asc'
-                    },
-                    include: {
-                        sender: {
-                            select: {
-                                email: true,
-                                fullname: true,
-                                avatar: true
-                            }
-                        }
+                sender: {
+                    select: {
+                        email: true,
+                        fullname: true,
+                        avatar: true
                     }
                 }
             }
         })
 
-        if(!sharedRoom) {
-            return res.status(200).json([]);
-        }
-
-        const formattedMessages = sharedRoom.messages.map(msg => ({
+        const formattedMessages = messages.reverse().map(msg => ({
             id: msg.id,
             text: msg.text,
             imageUrl: msg.imageUrl,
