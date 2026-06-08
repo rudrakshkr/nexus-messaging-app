@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { TailSpin } from "react-loader-spinner";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function EditProfile({user, setUser}) {
     const token = localStorage.getItem("jwtToken");
@@ -40,7 +41,7 @@ export default function EditProfile({user, setUser}) {
                 formData.append("avatar", selectedFile);
             }
 
-            const res = await fetch('/api/editProfile', {
+            const res = await fetch(`${API_URL}/api/editProfile`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` },
                 body: formData

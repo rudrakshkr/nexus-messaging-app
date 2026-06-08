@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TailSpin } from "react-loader-spinner";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function IntelligencePanel({ isOpen, onClose, roomId }) {
     const token = localStorage.getItem("jwtToken");
@@ -19,7 +20,7 @@ export default function IntelligencePanel({ isOpen, onClose, roomId }) {
         const fetchIntelligence = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(`/api/intelligence/${roomId}`, {
+                const res = await fetch(`${API_URL}/api/intelligence/${roomId}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (res.ok) {

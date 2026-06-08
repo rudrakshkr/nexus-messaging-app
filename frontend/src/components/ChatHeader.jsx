@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import NewChatModal from "./NewChatModal";
 import ConfirmModal from "./ConfirmModal";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms, onSelectRoom, searchQuery, setSearchQuery, setSearchTrigger, onlineUsers=[], isIntelligenceOpen, setIsIntelligenceOpen}) {
     const token = localStorage.getItem("jwtToken");
@@ -84,7 +85,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
             isDestructive: true,
             action: async () => {
                 try {
-                    const res = await fetch('/api/leaveRoom', {
+                    const res = await fetch(`${API_URL}/api/leaveRoom`, {
                         method: "DELETE",
                         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify({ roomId: activeRoom.id })
@@ -107,7 +108,7 @@ export default function ChatHeader({user, activeRoom, setIsDrawerOpen, setRooms,
             confirmText: "Delete Everywhere",
             action: async () => {
                 try {
-                    const res = await fetch('/api/deleteRoom', {
+                    const res = await fetch(`${API_URL}/api/deleteRoom`, {
                         method: "DELETE",
                         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify({ roomId: activeRoom.id })

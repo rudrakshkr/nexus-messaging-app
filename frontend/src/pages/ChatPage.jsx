@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { socket } from "../socket"
 import IntelligencePanel from "../components/IntelligencePanel"
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 let globalRoomsCache = null;
 
@@ -260,7 +261,7 @@ export default function ChatPage({user, setUser}) {
                     setIsLoading(true); 
                 }
 
-                const res = await fetch(`/api/getRooms`, {
+                const res = await fetch(`${API_URL}/api/getRooms`, {
                     method: 'GET',
                     headers: {
                         "Content-Type": "application/json",
@@ -291,7 +292,7 @@ export default function ChatPage({user, setUser}) {
         );
 
         if (room.unreadCount > 0) {
-            fetch('/api/markRoomRead', {
+            fetch(`${API_URL}/api/markRoomRead`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

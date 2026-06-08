@@ -3,6 +3,7 @@ import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
 import { TailSpin } from "react-loader-spinner";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 let globalMessagesCache = {};
 
@@ -133,7 +134,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                     setIsLoadingMessages(true);
                 }
 
-                const res = await fetch(`/api/messages/${roomId}`, {
+                const res = await fetch(`${API_URL}/api/messages/${roomId}`, {
                     method: 'GET',
                     headers: {
                         "Content-Type": "application/json",
@@ -348,7 +349,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         setIsMagicMenuOpen(false);
 
         try {
-            const res = await fetch('/api/magicCompose', {
+            const res = await fetch(`${API_URL}/api/magicCompose`, {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json",
@@ -423,7 +424,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             formData.append("image", fileToUpload);
 
             try {
-                const res = await fetch(`/api/uploadImage`, {
+                const res = await fetch(`${API_URL}/api/uploadImage`, {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${token}` },
                     body: formData

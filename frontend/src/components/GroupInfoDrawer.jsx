@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { TailSpin } from "react-loader-spinner";
 import ConfirmModal from "./ConfirmModal";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onUpdateRoomInfo}) {
     const token = localStorage.getItem("jwtToken");
@@ -58,7 +59,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
                 formData.append("groupAvatar", file);
                 formData.append("roomId", room.id);
 
-                const res = await fetch(`/api/updateGroupAvatar`, {
+                const res = await fetch(`${API_URL}/api/updateGroupAvatar`, {
                     method: "PUT",
                     headers: { "Authorization": `Bearer ${token}` },
                     body: formData
@@ -102,7 +103,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
         setIsLoadingName(true);
         setIsEditingName(false);
         try {
-            const res = await fetch('/api/updateGroupName', {
+            const res = await fetch(`${API_URL}/api/updateGroupName`, {
                 method: "PUT",
                 headers: { 
                     "Content-Type": "application/json",
@@ -136,7 +137,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
     const handleRoleChange = async (targetUserId, newRole) => {
         setUpdatingUserId(targetUserId);
         try {
-            const res = await fetch('/api/updateGroupAdmin', {
+            const res = await fetch(`${API_URL}/api/updateGroupAdmin`, {
                 method: "PUT",
                 headers: { 
                     "Content-Type": "application/json",
@@ -184,7 +185,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
             isDestructive: true,
             action: async () => {
                 try {
-                    const res = await fetch('/api/kickGroupUser', {
+                    const res = await fetch(`${API_URL}/api/kickGroupUser`, {
                         method: "DELETE",
                         headers: { 
                             "Content-Type": "application/json",

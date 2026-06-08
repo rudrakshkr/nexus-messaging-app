@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function NewChatModal({isOpen, onClose, token, addMember, currentUser, onRoomCreated, activeRoom, onSelectRoom}) {
     const [users, setUsers] = useState([]);
@@ -30,7 +31,7 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
         const fetchUsers = async () => {
             try {
                 setIsLoading(true);
-                const res = await fetch('/api/getUsers', {
+                const res = await fetch(`${API_URL}/api/getUsers`, {
                     headers: {"Authorization": `Bearer ${token}`}
                 });
                 if(res.ok) {
@@ -69,7 +70,7 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
             // ADDING MEMBERS TO EXISTING GROUP
             // -------------------------------------
             if (addMember && activeRoom) {
-                const res = await fetch('/api/addGroupUser', {
+                const res = await fetch(`${API_URL}/api/addGroupUser`, {
                     method: "POST", 
                     headers: {
                         "Content-Type": "application/json",
@@ -101,7 +102,7 @@ export default function NewChatModal({isOpen, onClose, token, addMember, current
                     return alert("Please enter a group name!");
                 }
 
-                const res = await fetch('/api/createRoom', {
+                const res = await fetch(`${API_URL}/api/createRoom`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

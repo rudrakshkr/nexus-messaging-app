@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { TailSpin } from "react-loader-spinner";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function LoginPage({ setUser }) {
     const API_URL = import.meta.env.VITE_API_BASE_URL || "";
