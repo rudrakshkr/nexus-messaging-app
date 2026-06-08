@@ -567,9 +567,13 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                             
                             const prevMsg = messages[index - 1];
                             const nextMsg = messages[index + 1];
+
+                            const currentMsgTime = msg.date ? new Date(msg.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : msg.time;
+                            const prevMsgTime = prevMsg?.date ? new Date(prevMsg.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : prevMsg?.time;
+                            const nextMsgTime = nextMsg?.date ? new Date(nextMsg.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }) : nextMsg?.time;
                             
-                            const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsg.time !== msg.time;
-                            const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsg.time !== msg.time;
+                            const isFirstInGroup = !prevMsg || prevMsg.senderEmail !== msg.senderEmail || prevMsgTime !== currentMsgTime;
+                            const isLastInGroup = !nextMsg || nextMsg.senderEmail !== msg.senderEmail || nextMsgTime !== currentMsgTime;
 
                             const currentMsgDate = msg.date ? new Date(msg.date).toDateString() : new Date().toDateString();
                             const prevMsgDate = prevMsg?.date ? new Date(prevMsg.date).toDateString() : null;
@@ -596,7 +600,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                     {msg.type === 'SYSTEM' ? (
                                         <div className="flex flex-col items-center justify-center my-4 animate-message-pop w-full gap-1.5">
                                             <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
-                                                {msg.time}
+                                                {currentMsgTime}
                                             </span>
                                             <span className="bg-[#161618] border border-[#2c2c2f] text-[#8f8f96] text-[12px] font-medium px-4 py-1.5 rounded-full shadow-sm">
                                                 {msg.text}
@@ -630,7 +634,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                             <span className="text-[13px] font-semibold text-[#e1e1e3]">
                                                                 {isMyMessage ? 'You' : msg.fullname}
                                                             </span>
-                                                            <span className="text-[11px] text-[#8f8f96]">{msg.time}</span>
+                                                            <span className="text-[11px] text-[#8f8f96]">{currentMsgTime}</span>
                                                         </div>
                                                     )}
                                                     
