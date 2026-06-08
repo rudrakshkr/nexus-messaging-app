@@ -249,23 +249,25 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
         <>
             <div 
                 onClick={onClose}
-                className={`fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
-                    isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                className={`fixed top-0 right-0 h-full w-[85%] max-w-[350px] bg-[#161618] border-l border-[#2c2c2f] z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
+                    isOpen ? 'translate-x-0' : 'translate-x-full'
                 }`}
             />
             {/* TOAST NOTIFICATION  */}
             <div 
-                className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 bg-[#00d97e]/15 border border-[#00d97e]/30 backdrop-blur-md text-[#00d97e] px-4 py-2.5 rounded-xl shadow-[0_10px_30px_rgba(0,217,126,0.15)] transition-all duration-300 ease-out
+                className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-start sm:items-center gap-3 w-[90vw] sm:w-max max-w-md bg-[#ffab00]/15 border border-[#ffab00]/30 backdrop-blur-md text-[#ffab00] px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(255,171,0,0.15)] transition-all duration-300 ease-out
                 ${notification 
                     ? 'opacity-100 translate-y-0' 
                     : 'opacity-0 translate-y-6 pointer-events-none' 
                 }`}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5 sm:mt-0">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span className="text-[14px] font-semibold tracking-wide">
+                
+                <span className="text-[14px] font-semibold tracking-wide leading-snug break-words">
                     {notification}
                 </span>
             </div>
@@ -298,40 +300,54 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
                         `}</style>
 
                         <div 
-                            className={`relative w-20 h-20 rounded-full overflow-hidden ${iAmAdmin && !isUploadingAvatar ? 'cursor-pointer group' : ''}`}
+                            className={`relative ${iAmAdmin && !isUploadingAvatar ? 'cursor-pointer group' : ''}`}
                             onClick={() => iAmAdmin && !isUploadingAvatar && fileInputRef.current?.click()}
                         >
-                            {/* Avatar */}
-                            {avatarPreview ? (
-                                <img 
-                                    src={avatarPreview} 
-                                    alt="Group Avatar" 
-                                    className={`w-full h-full rounded-full object-cover border-4 border-[#2c2c2f] transition-all duration-700 ease-in-out ${
+                            
+                            <div className="relative w-20 h-20 rounded-full overflow-hidden">
+                                
+                                {/* Avatar Image */}
+                                {avatarPreview ? (
+                                    <img 
+                                        src={avatarPreview} 
+                                        alt="Group Avatar" 
+                                        className={`w-full h-full rounded-full object-cover border-4 border-[#2c2c2f] transition-all duration-700 ease-in-out ${
+                                            isUploadingAvatar ? 'blur-[6px] brightness-[0.25] scale-110' : 'group-hover:opacity-50'
+                                        }`}
+                                    />
+                                ) : (
+                                    <div className={`w-full h-full rounded-full border-4 border-[#2c2c2f] flex items-center justify-center text-white font-bold text-3xl shadow-inner transition-all duration-700 ease-in-out ${
                                         isUploadingAvatar ? 'blur-[6px] brightness-[0.25] scale-110' : 'group-hover:opacity-50'
-                                    }`}
-                                />
-                            ) : (
-                                <div className={`w-full h-full rounded-full border-4 border-[#2c2c2f] flex items-center justify-center text-white font-bold text-3xl shadow-inner transition-all duration-700 ease-in-out ${
-                                    isUploadingAvatar ? 'blur-[6px] brightness-[0.25] scale-110' : 'group-hover:opacity-50'
-                                } ${getAvatarColor(room.subject)}`}>
-                                    {room.subject ? room.subject.charAt(0).toUpperCase() : '#'}
-                                </div>
-                            )}
+                                    } ${getAvatarColor(room.subject)}`}>
+                                        {room.subject ? room.subject.charAt(0).toUpperCase() : '#'}
+                                    </div>
+                                )}
 
-                            {isUploadingAvatar && (
-                                <>
-                                    <div 
-                                        className="absolute top-0 bottom-0 w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-sweep z-10" 
-                                        style={{ filter: 'blur(4px)' }}
-                                    ></div>
-                                    
-                                    <div className="absolute inset-0 rounded-full border-[4px] border-[#8444f6] animate-pulse z-20 shadow-[0_0_15px_#8444f6]"></div>
-                                </>
-                            )}
+                                {isUploadingAvatar && (
+                                    <>
+                                        <div 
+                                            className="absolute top-0 bottom-0 w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-sweep z-10" 
+                                            style={{ filter: 'blur(4px)' }}
+                                        ></div>
+                                        <div className="absolute inset-0 rounded-full border-[4px] border-[#8444f6] animate-pulse z-20 shadow-[0_0_15px_#8444f6]"></div>
+                                    </>
+                                )}
 
+                                {/* Desktop Hover Overlay */}
+                                {iAmAdmin && !isUploadingAvatar && (
+                                    <div className="hidden md:flex absolute inset-0 items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-all z-10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                            <circle cx="12" cy="13" r="4"></circle>
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Mobile Overlay */}
                             {iAmAdmin && !isUploadingAvatar && (
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <div className="md:hidden absolute bottom-0 right-0 bg-[#8444f6] text-white p-1.5 rounded-full border-[3px] border-[#161618] shadow-lg z-20 flex items-center justify-center transform translate-x-1/4 translate-y-1/4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                                         <circle cx="12" cy="13" r="4"></circle>
                                     </svg>
@@ -391,7 +407,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
                                 {iAmAdmin && !isLoadingName && (
                                     <button 
                                         onClick={() => setIsEditingName(true)}
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-white/5 text-[#8f8f96] hover:text-[#e1e1e3]"
+                                        className="opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-white/5 text-[#8f8f96] hover:text-[#e1e1e3]"
                                         title="Edit Group Name"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -447,7 +463,7 @@ export default function GroupInfoDrawer({isOpen, onClose, room, currentUser, onU
 
                                     {/* Admin Action Buttons  */}
                                     {iAmAdmin && !isMe && (
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[#161618] shadow-[-10px_0_10px_#161618] absolute right-2">
+                                        <div className="opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-[#161618] shadow-[-10px_0_10px_#161618] absolute right-2">
                                             <button 
                                                 onClick={() => handleRoleChange(member.id, isAdmin ? 'MEMBER' : 'ADMIN')}
                                                 disabled={updatingUserId === member.id}

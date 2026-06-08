@@ -51,7 +51,9 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
         : rooms;
 
     return (
-        <section className="flex flex-col w-[320px] lg:w-[310px] flex-shrink-0 bg-[#161618] border-r border-[#2c2c2f]">
+        <section className={`flex flex-col h-full bg-[#161618] border-r border-[#2c2c2f] flex-shrink-0 transition-all duration-200
+            ${activeRoom ? 'hidden md:flex md:w-[320px] lg:w-[310px]' : 'w-full md:w-[320px] lg:w-[310px]'}
+        `}>
             <div className="flex items-center justify-between px-4 py-4">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-[#8444f6] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(132,68,246,0.4)] flex-shrink-0">

@@ -487,18 +487,19 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#0a0a0a]">
             {/* Toast Notification  */}
             <div 
-                className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 bg-[#ffab00]/15 border border-[#ffab00]/30 backdrop-blur-md text-[#ffab00] px-4 py-2.5 rounded-xl shadow-[0_10px_30px_rgba(255,171,0,0.15)] transition-all duration-300 ease-out
+                className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-start sm:items-center gap-3 w-[90vw] sm:w-max max-w-md bg-[#ffab00]/15 border border-[#ffab00]/30 backdrop-blur-md text-[#ffab00] px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(255,171,0,0.15)] transition-all duration-300 ease-out
                 ${notification 
                     ? 'opacity-100 translate-y-0' 
                     : 'opacity-0 translate-y-6 pointer-events-none' 
                 }`}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5 sm:mt-0">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="8" x2="12" y2="12"></line>
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span className="text-[14px] font-semibold tracking-wide">
+                
+                <span className="text-[14px] font-semibold tracking-wide leading-snug break-words">
                     {notification}
                 </span>
             </div>
@@ -688,8 +689,8 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                 )}
             </div>
             
-            <div className="p-6 pt-2 shrink-0">
-                <div className="border-t border-[#2c2c2f] pt-4">
+            <div className="p-3 sm:pt-6 pt-2 shrink-0">
+                <div className="border-t border-[#2c2c2f] pt-3 sm:pt-4">
                     
                     {selectedImage && (
                         <div className="mb-3 relative inline-block">
@@ -712,7 +713,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                         </div>
                     )}
 
-                    <div className="relative bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-4 py-3 focus-within:border-[#8444f6] transition-colors">
+                    <div className="relative bg-[#161618] border border-[#2c2c2f] rounded-xl flex items-center px-2 sm:px-4 py-2 sm:py-3 focus-within:border-[#8444f6] transition-colors">
                         {showEmojiPicker && (
                             <div ref={pickerRef} className="absolute bottom-[110%] right-0 z-50 shadow-2xl">
                                 <EmojiPicker 
@@ -753,7 +754,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                             placeholder={`Message ${displayName?.split(' ')[0] || 'Group'}...`}
                             className={`flex-1 bg-transparent border-none outline-none text-[#e1e1e3] text-[14px] placeholder-[#8f8f96] px-3 py-2 resize-y min-h-[44px] max-h-[50vh] overflow-y-auto custom-scrollbar transition-all ${isMagicLoading ? 'opacity-30' : ''}`}                        />
 
-                        <div className="flex items-center gap-3 flex-shrink-0 text-[#8f8f96] ml-2">
+                        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0 text-[#8f8f96] ml-1 sm:ml-2">
                             {/* Magic Menu Button  */}
                             <div className="relative flex items-center" ref={magicMenuRef}>
                                 <button 
