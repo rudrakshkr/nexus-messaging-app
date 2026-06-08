@@ -304,7 +304,7 @@ export default function ChatPage({user, setUser}) {
     }
 
     return (
-        <main className="w-full h-screen overflow-hidden flex bg-[#0f0f0f] text-white font-sans relative">
+        <main className="w-full h-[100dvh] overflow-hidden flex bg-[#0f0f0f] text-white font-sans relative">
 
             {/* Toast Notification  */}
             <div 

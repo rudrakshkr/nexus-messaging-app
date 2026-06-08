@@ -99,7 +99,7 @@ export default function Sidebar({ user, setUser, onSelectRoom, activeRoom, rooms
                 </button>
             </div>
 
-            <div className="flex flex-col w-full h-full max-h-screen overflow-hidden">
+            <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
                 {/* Contact Info Cards */}
                 <div className="flex-1 overflow-y-auto">
                     {isLoading ? (
