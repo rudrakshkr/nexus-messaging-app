@@ -3,6 +3,7 @@ import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
 import { TailSpin } from "react-loader-spinner";
+
 const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 let globalMessagesCache = {};
@@ -27,6 +28,11 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const [isMagicLoading, setIsMagicLoading] = useState(false);
 
     const [notification, setNotification] = useState("");
+
+    const [replyToMsg, setReplyToMsg] = useState(null);
+    const [editingMsg, setEditingMsg] = useState(null);
+    const [activeMenuId, setActiveMenuId] = useState(null);
+
     const showToast = (message) => {
         setNotification(message);
         setTimeout(() => {
@@ -43,7 +49,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const magicMenuRef = useRef(null);
     const textareaRef = useRef(null);
 
-    // Display logic
     const isGroup = activeRoom?.type === 'GROUP';
     const otherParticipant = !isGroup
         ? activeRoom?.participants?.find(p => p.user.email !== user.email)?.user
@@ -55,10 +60,9 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             if(magicMenuRef.current && !magicMenuRef.current.contains(event.target)) {
                 setIsMagicMenuOpen(false);
             }
-
-            document.addEventListener("mousedown", handleClickOutside);
-            return () => document.removeEventListener("mousedown", handleClickOutside);
         }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     useEffect(() => {
@@ -120,7 +124,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showEmojiPicker]);
 
-    // 2. FETCH HISTORY BY ROOM ID
     useEffect(() => {
         if(!roomId) return;
 
@@ -192,12 +195,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             setTypingUsers((prev) => prev.filter((name) => name !== fullname));
         };
 
-        const handleMessagesRead = ({roomId: readRoomId, readByUserId}) => {
-            if (readRoomId !== roomId || readByUserId === user.id) return;
-
-            setMessages(prev => prev.map(msg => ({...msg, isRead: true})));
-        }
-
         const handleUserProfileUpdated = (updatedUser) => {
             setMessages((prev) => prev.map(msg => {
                 if (msg.senderEmail === updatedUser.email) {
@@ -211,11 +208,30 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             }));
         };
 
+        const handleMessagesRead = ({ roomId: readRoomId, readByUserId }) => {
+            if (readRoomId !== roomId || readByUserId === user.id) return;
+            setMessages(prev => prev.map(msg => ({ ...msg, isRead: true })));
+        };
+
+        const handleMessageEdited = ({ messageId, newText }) => {
+            setMessages(prev => prev.map(msg => 
+                (msg.id === messageId || msg.tempId === messageId) ? { ...msg, text: newText, isEdited: true } : msg
+            ));
+        };
+
+        const handleMessageDeleted = ({ messageId }) => {
+            setMessages(prev => prev.map(msg => 
+                (msg.id === messageId || msg.tempId === messageId) ? { ...msg, isDeleted: true, text: "This message was deleted.", imageUrl: null } : msg
+            ));
+        };
+
         socket.on("receiveMessage", handleIncomingMessage);
         socket.on("userTyping", handleUserTyping);
         socket.on("userStoppedTyping", handleUserStoppedTyping);
         socket.on("userProfileUpdated", handleUserProfileUpdated);
         socket.on("messagesRead", handleMessagesRead);
+        socket.on("messageEdited", handleMessageEdited);
+        socket.on("messageDeleted", handleMessageDeleted);
 
         return () => {
             socket.off("receiveMessage", handleIncomingMessage);
@@ -223,8 +239,10 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             socket.off("userStoppedTyping", handleUserStoppedTyping);
             socket.off("userProfileUpdated", handleUserProfileUpdated);
             socket.off("messagesRead", handleMessagesRead);
+            socket.off("messageEdited", handleMessageEdited);
+            socket.off("messageDeleted", handleMessageDeleted);
         }
-    }, [roomId]);
+    }, [roomId, user.id]);
 
     useEffect(() => {
         if (!searchQuery || !searchQuery.trim()) return;
@@ -335,7 +353,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         }
     }
 
-    // Input change handler with timeout
     const handleInputChange = (e) => {
         setInputText(e.target.value);
 
@@ -391,6 +408,18 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         const fileToUpload = selectedFile;
         const previewImage = selectedImage;
 
+        if (editingMsg) {
+            socket.emit("editMessage", { messageId: editingMsg.id || editingMsg.tempId, newText: textToSend, roomId });
+            setMessages(prev => prev.map(m => 
+                ((editingMsg.id && m.id === editingMsg.id) || (editingMsg.tempId && m.tempId === editingMsg.tempId)) 
+                ? { ...m, text: textToSend, isEdited: true } 
+                : m
+            ));            
+            setInputText("");
+            setEditingMsg(null);
+            return;
+        }
+
         if(isListening && recognitionRef.current) {
             recognitionRef.current.stop();
             setIsListening(false);
@@ -420,7 +449,10 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             time: new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}),
             date: new Date().toISOString(),
             isPending: true,
-            roomId: roomId
+            roomId: roomId,
+            isEdited: false,
+            isDeleted: false,
+            replyTo: replyToMsg ? { id: replyToMsg.id, text: replyToMsg.text, fullname: replyToMsg.fullname } : null
         }
 
         setMessages((prev) => [...prev, optimisticMsg]);
@@ -456,8 +488,11 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             imageUrl: finalImageUrl,
             senderEmail: myMail,
             roomId: roomId,
-            tempId: tempId
+            tempId: tempId,
+            replyToId: replyToMsg?.id || null 
         });
+
+        setReplyToMsg(null);
     }
 
     const onEmojiClick = (emojiObject) => {
@@ -617,9 +652,9 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                     ) : (
                                         <div 
                                             key={msg.tempId || msg.id} 
-                                            className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'}`}
+                                            className={`flex w-full animate-message-pop ${isMyMessage ? 'justify-end' : 'justify-start'} ${isLastInGroup ? 'mb-6' : 'mb-1'} ${activeMenuId === (msg.id || msg.tempId) ? 'relative z-50' : 'relative z-0'}`}
                                         >
-                                            <div className={`flex gap-3 max-w-[85%] sm:max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <div className={`flex gap-3 max-w-[85%] sm:max-w-2xl ${isMyMessage ? 'flex-row-reverse' : 'flex-row'} group relative`}>
                                                 <div className="w-8 flex-shrink-0 flex items-end">
                                                     {isLastInGroup && (
                                                         msg.avatar ? 
@@ -646,8 +681,9 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                         </div>
                                                     )}
                                                     
-                                                    <div className={`px-4 py-2 w-fit ${
-                                                        isMyMessage 
+                                                    <div className={`px-4 py-2 w-fit relative ${
+                                                        msg.isDeleted ? 'bg-transparent border border-[#2c2c2f] text-[#8f8f96]'
+                                                        : isMyMessage 
                                                             ? 'bg-[#8444f6] text-white' 
                                                             : 'bg-[#161618] border border-[#2c2c2f] text-[#e1e1e3]'
                                                     } 
@@ -655,19 +691,44 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                         ? `rounded-l-2xl ${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-md'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-md'}`
                                                         : `rounded-r-2xl ${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-md'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-md'}`
                                                     }`}>
-                                                        {msg.imageUrl && (
-                                                            <img 
-                                                                src={msg.imageUrl} 
-                                                                alt="Attachment" 
-                                                                onClick={() => setZoomedImage(msg.imageUrl)}
-                                                                className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                                            />
+                                                        {/* Reply To Message  */}
+                                                        {msg.replyTo && !msg.isDeleted && (
+                                                            <div 
+                                                                onClick={() => {
+                                                                    const el = document.getElementById(`message-${msg.replyTo.id}`);
+                                                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                }}
+                                                                className={`mb-2 mt-1 px-3 py-1.5 rounded-lg text-[12px] cursor-pointer border-l-2 transition-colors ${
+                                                                isMyMessage ? 'bg-white/10 border-white/40 hover:bg-white/20 text-white/80' : 'bg-[#2c2c2f] border-[#8444f6] hover:bg-[#3a3a3e] text-[#8f8f96]'
+                                                            }`}>
+                                                                <span className="font-bold opacity-100">{msg.replyTo.fullname}</span>
+                                                                <p className="truncate opacity-80">{msg.replyTo.text}</p>
+                                                            </div>
                                                         )}
 
-                                                        {msg.text && (
-                                                            <p className="text-[14px] break-words break-all whitespace-pre-wrap">
-                                                                {renderMessageText(msg.text, searchQuery)} 
+                                                        {msg.isDeleted ? (
+                                                            <p className="text-[13px] italic flex items-center gap-1.5 opacity-70">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                                                                This message was deleted.
                                                             </p>
+                                                        ) : (
+                                                            <>
+                                                                {msg.imageUrl && (
+                                                                    <img 
+                                                                        src={msg.imageUrl} 
+                                                                        alt="Attachment" 
+                                                                        onClick={() => setZoomedImage(msg.imageUrl)}
+                                                                        className="max-w-[200px] sm:max-w-[250px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity mb-1.5"
+                                                                    />
+                                                                )}
+
+                                                                {msg.text && (
+                                                                    <p className="text-[14px] break-words break-all whitespace-pre-wrap">
+                                                                        {renderMessageText(msg.text, searchQuery)} 
+                                                                        {msg.isEdited && <span className="text-[10px] ml-1.5 opacity-50 italic">(edited)</span>}
+                                                                    </p>
+                                                                )}
+                                                            </>
                                                         )}
 
                                                         {isMyMessage && (
@@ -694,6 +755,65 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                         )}
                                                     </div>
                                                 </div>
+                                                {!msg.isDeleted && (
+                                                    <div className={`opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity flex items-center mt-6 ${isMyMessage ? 'mr-1' : 'ml-1'}`}>
+                                                        <div className="relative">
+                                                            <button 
+                                                                onClick={() => setActiveMenuId(activeMenuId === (msg.id || msg.tempId) ? null : (msg.id || msg.tempId))}
+                                                                className="p-1.5 text-[#8f8f96] hover:text-[#e1e1e3] hover:bg-[#2c2c2f] rounded-full transition-colors"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                                            </button>
+
+                                                            {activeMenuId === (msg.id || msg.tempId) && (
+                                                                <div className={`absolute top-full mt-1 w-36 bg-[#161618] border border-[#2c2c2f] rounded-xl shadow-2xl z-50 overflow-hidden ${isMyMessage ? 'right-0' : 'left-0'}`}>
+                                                                    {/* Reply Message Button */}
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setReplyToMsg(msg); 
+                                                                            setEditingMsg(null); 
+                                                                            setActiveMenuId(null); 
+                                                                            textareaRef.current?.focus(); 
+
+                                                                        }} 
+                                                                        className="w-full text-left px-4 py-2.5 text-[#e1e1e3] hover:bg-white/5 text-[13px] font-medium flex items-center gap-2"
+                                                                    >
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg> Reply
+                                                                    </button>
+                                                                    
+                                                                    {/* Edit Message Button  */}
+                                                                    {isMyMessage && !msg.imageUrl && (
+                                                                        <button 
+                                                                            onClick={() => { 
+                                                                                setEditingMsg(msg); 
+                                                                                setReplyToMsg(null); 
+                                                                                setInputText(msg.text); 
+                                                                                setActiveMenuId(null); 
+                                                                                textareaRef.current?.focus(); 
+                                                                            }} 
+                                                                            className="w-full text-left px-4 py-2.5 text-[#e1e1e3] hover:bg-white/5 text-[13px] font-medium flex items-center gap-2"
+                                                                        >
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg> Edit
+                                                                        </button>
+                                                                    )}
+                                                                    
+                                                                    {/* Delete Message Button  */}
+                                                                    {isMyMessage && (
+                                                                        <button 
+                                                                            onClick={() => { 
+                                                                                socket.emit("deleteMessage", { messageId: msg.id || msg.tempId, roomId }); 
+                                                                                setActiveMenuId(null); 
+                                                                            }} 
+                                                                            className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-red-500/10 text-[13px] font-medium flex items-center gap-2 border-t border-[#2c2c2f]"
+                                                                        >
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg> Delete
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -727,6 +847,24 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             
             <div className="p-3 sm:pt-6 pt-2 shrink-0">
                 <div className="border-t border-[#2c2c2f] pt-3 sm:pt-4">
+
+                    {(replyToMsg || editingMsg) && (
+                        <div className="flex items-center justify-between bg-[#161618] border border-[#2c2c2f] border-b-0 rounded-t-xl px-4 py-2.5 mx-2 sm:mx-4 -mb-1 animate-in slide-in-from-bottom-2 relative z-0">
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-[12px] font-bold text-[#8444f6] flex items-center gap-1.5">
+                                    {editingMsg ? (
+                                        <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg> Edit Message</>
+                                    ) : (
+                                        <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg> Replying to {replyToMsg.fullname}</>
+                                    )}
+                                </span>
+                                <span className="text-[13px] text-[#8f8f96] truncate">{editingMsg ? editingMsg.text : replyToMsg.text}</span>
+                            </div>
+                            <button onClick={() => { setReplyToMsg(null); setEditingMsg(null); setInputText(""); }} className="text-[#8f8f96] hover:text-[#e1e1e3] p-1 bg-[#2c2c2f] rounded-full transition-colors shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    )}
                     
                     {selectedImage && (
                         <div className="mb-3 relative inline-block">
