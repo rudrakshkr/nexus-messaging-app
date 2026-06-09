@@ -232,6 +232,17 @@ async function roomIdGet(req, res, next) {
                         fullname: true,
                         avatar: true
                     }
+                },
+                replyTo: {
+                    select: {
+                        id: true,
+                        text: true,
+                        sender: {
+                            select: {
+                                fullname: true
+                            }
+                        }
+                    }
                 }
             }
         })
@@ -246,6 +257,9 @@ async function roomIdGet(req, res, next) {
             fullname: msg.sender.fullname,
             avatar: msg.sender.avatar,
             isRead: cursor ? true : (index >= otherUnreadCount),
+            isEdited: msg.isEdited,
+            isDeleted: msg.isDeleted,
+            replyTo: msg.replyTo ? { id: msg.replyTo.id, text: msg.replyTo.text, fullname: msg.replyTo.sender?.fullname } : null,
             time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
                 hour: 'numeric', minute: '2-digit', hour12: true 
             }),

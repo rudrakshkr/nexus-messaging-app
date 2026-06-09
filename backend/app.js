@@ -94,6 +94,20 @@ io.on("connection", (socket) => {
           },
           room: {
             connect: {id: roomId}
+          },
+          ...(data.replyToId ? { replyTo: { connect: { id: data.replyToId } } } : {})
+        },
+        include: {
+          replyTo: {
+            select: {
+              id: true, 
+              text: true, 
+              sender: {
+                select: {
+                  fullname: true 
+                } 
+              } 
+            } 
           }
         }
       });
@@ -120,7 +134,14 @@ io.on("connection", (socket) => {
         time: new Date(savedMessage.createdAt).toLocaleTimeString('en-US', { 
             hour: 'numeric', minute: '2-digit', hour12: true 
         }),
-        date: savedMessage.createdAt
+        date: savedMessage.createdAt,
+        isEdited: false,
+        isDeleted: false,
+        replyTo: savedMessage.replyTo ? { 
+            id: savedMessage.replyTo.id, 
+            text: savedMessage.replyTo.text, 
+            fullname: savedMessage.replyTo.sender?.fullname 
+        } : null
       }
 
       // Broadcast to entire room at once
@@ -140,6 +161,7 @@ io.on("connection", (socket) => {
     socket.to(`room_${roomId}`).emit("userStoppedTyping", {fullname});
   });
 
+  // Mark message as read
   socket.on("markAsRead", async ({roomId, userId}) => {
     if(!roomId || !userId) return;
     try {
@@ -156,6 +178,30 @@ io.on("connection", (socket) => {
       console.error("Error marking room as read:", err);
     }
   })
+
+  // Edit Message
+  socket.on("editMessage", async ({ messageId, newText, roomId }) => {
+    try {
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { text: newText, isEdited: true }
+      });
+      io.to(`room_${roomId}`).emit("messageEdited", { messageId, newText });
+    } catch(err) { console.error("Edit error:", err); }
+  });
+
+  // Delete Message
+  socket.on("deleteMessage", async ({ messageId, roomId }) => {
+    try {
+      await prisma.message.update({
+        where: { id: messageId },
+        data: { isDeleted: true, text: "This message was deleted." }
+      });
+      io.to(`room_${roomId}`).emit("messageDeleted", { messageId });
+    } catch(err) { 
+      console.error("Delete error:", err); 
+    }
+  });
 
   // Disconnect
   socket.on("disconnect", async () => {

@@ -77,6 +77,9 @@ model Message {
 
   type MessageType @default(USER)
 
+  isEdited Boolean @default(false)
+  isDeleted Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   // Relation to user
@@ -86,4 +89,8 @@ model Message {
   // Relation to room
   room   Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   roomId Int
+
+  replyToId Int?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
 }
