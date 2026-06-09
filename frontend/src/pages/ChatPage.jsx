@@ -59,7 +59,11 @@ export default function ChatPage({user, setUser}) {
 
                 if (roomIndex !== -1) {
                     const isCurrentlyViewing = activeRoom && String(activeRoom.id) === String(msg.roomId);
-                    
+
+                    if (isCurrentlyViewing) {
+                        socket.emit("markAsRead", { roomId: msg.roomId, userId: user.id });
+                    }
+
                     const updatedRoom = {
                         ...prevRooms[roomIndex],
                         unreadCount: !isCurrentlyViewing ? (prevRooms[roomIndex].unreadCount || 0) + 1 : 0,
@@ -292,14 +296,7 @@ export default function ChatPage({user, setUser}) {
         );
 
         if (room.unreadCount > 0) {
-            fetch(`${API_URL}/api/markRoomRead`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ roomId: room.id })
-            }).catch(err => console.error("Failed to mark as read:", err));
+            socket.emit("markAsRead", { roomId: room.id, userId: user.id });
         }
     }
 

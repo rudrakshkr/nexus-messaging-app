@@ -192,6 +192,12 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             setTypingUsers((prev) => prev.filter((name) => name !== fullname));
         };
 
+        const handleMessagesRead = ({roomId: readRoomId, readByUserId}) => {
+            if (readRoomId !== roomId || readByUserId === user.id) return;
+
+            setMessages(prev => prev.map(msg => ({...msg, isRead: true})));
+        }
+
         const handleUserProfileUpdated = (updatedUser) => {
             setMessages((prev) => prev.map(msg => {
                 if (msg.senderEmail === updatedUser.email) {
@@ -209,12 +215,14 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         socket.on("userTyping", handleUserTyping);
         socket.on("userStoppedTyping", handleUserStoppedTyping);
         socket.on("userProfileUpdated", handleUserProfileUpdated);
+        socket.on("messagesRead", handleMessagesRead);
 
         return () => {
             socket.off("receiveMessage", handleIncomingMessage);
             socket.off("userTyping", handleUserTyping);
             socket.off("userStoppedTyping", handleUserStoppedTyping);
             socket.off("userProfileUpdated", handleUserProfileUpdated);
+            socket.off("messagesRead", handleMessagesRead);
         }
     }, [roomId]);
 
@@ -660,6 +668,29 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                             <p className="text-[14px] break-words break-all whitespace-pre-wrap">
                                                                 {renderMessageText(msg.text, searchQuery)} 
                                                             </p>
+                                                        )}
+
+                                                        {isMyMessage && (
+                                                            <div className="flex justify-end mt-1 opacity-90">
+                                                                {msg.isPending ? (
+                                                                    /* Pending (1 Grey Tick) */
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-white/40 transition-all">
+                                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                                    </svg>
+                                                                ) : msg.isRead ? (
+                                                                    /* Read (2 White Ticks) */
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-white transition-all">
+                                                                        <path d="M18 6 7 17l-5-5"></path>
+                                                                        <path d="m22 10-7.5 7.5L13 16"></path>
+                                                                    </svg>
+                                                                ) : (
+                                                                    /* 2. Delivered (2 Grey Ticks) */
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-white/40 transition-all">
+                                                                        <path d="M18 6 7 17l-5-5"></path>
+                                                                        <path d="m22 10-7.5 7.5L13 16"></path>
+                                                                    </svg>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
