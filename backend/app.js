@@ -140,6 +140,23 @@ io.on("connection", (socket) => {
     socket.to(`room_${roomId}`).emit("userStoppedTyping", {fullname});
   });
 
+  socket.on("markAsRead", async ({roomId, userId}) => {
+    if(!roomId || !userId) return;
+    try {
+      await prisma.roomParticipant.updateMany({
+        where: {
+          roomId: parseInt(roomId),
+          userId: parseInt(userId)
+        },
+        data: {unreadCount: 0}
+      });
+
+      socket.to(`room_${roomId}`).emit("messagesRead", {roomId, readByUserId: userId});
+    } catch(err) {
+      console.error("Error marking room as read:", err);
+    }
+  })
+
   // Disconnect
   socket.on("disconnect", async () => {
     console.log(`User disconnected: ${socket.id}`)

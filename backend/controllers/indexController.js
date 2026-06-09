@@ -198,16 +198,18 @@ async function roomIdGet(req, res, next) {
 
         const cursor = req.query.cursor ? parseInt(req.query.cursor) : null;
 
-        const participant = await prisma.roomParticipant.findFirst({
-            where: { 
-                roomId: roomId, 
-                userId: myUserId 
-            }
-        })
+        const participants = await prisma.roomParticipant.findMany({
+            where: { roomId: roomId }
+        });
+
+        const participant = participants.find(p => p.userId === myUserId);
 
         if (!participant) {
             return res.status(403).json({ message: "Not authorized to view this room." });
         }
+
+        const otherParticipant = participants.find(p => p.userId !== myUserId);
+        const otherUnreadCount = otherParticipant ? otherParticipant.unreadCount : 0;
 
         const messages = await prisma.message.findMany({
             where: {
@@ -234,7 +236,7 @@ async function roomIdGet(req, res, next) {
             }
         })
 
-        const formattedMessages = messages.reverse().map(msg => ({
+        const formattedMessages = messages.map((msg, index) => ({
             id: msg.id,
             text: msg.text,
             imageUrl: msg.imageUrl,
@@ -243,13 +245,12 @@ async function roomIdGet(req, res, next) {
             senderEmail: msg.sender.email,
             fullname: msg.sender.fullname,
             avatar: msg.sender.avatar,
+            isRead: cursor ? true : (index >= otherUnreadCount),
             time: new Date(msg.createdAt).toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
-                minute: '2-digit', 
-                hour12: true 
+                hour: 'numeric', minute: '2-digit', hour12: true 
             }),
             date: msg.createdAt
-        }));
+        })).reverse();
 
         res.status(200).json(formattedMessages);
     } catch(err) {
