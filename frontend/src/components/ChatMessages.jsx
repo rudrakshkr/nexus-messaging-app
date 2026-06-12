@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useLayoutEffect } from "react"
 import { socket } from "../socket";
 import EmojiPicker from "emoji-picker-react";
 import GroupInfoDrawer from "./GroupInfoDrawer";
@@ -33,6 +33,9 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const [editingMsg, setEditingMsg] = useState(null);
     const [activeMenuId, setActiveMenuId] = useState(null);
 
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
     const showToast = (message) => {
         setNotification(message);
         setTimeout(() => {
@@ -48,6 +51,10 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const typingTimeoutRef = useRef(null);
     const magicMenuRef = useRef(null);
     const textareaRef = useRef(null);
+    const chatContainerRef = useRef(null);
+    const shouldScrollToBottomRef = useRef(true);
+    const previousScrollHeightRef = useRef(0);
+    const isPrependingRef = useRef(false);
 
     const isGroup = activeRoom?.type === 'GROUP';
     const otherParticipant = !isGroup
@@ -68,10 +75,13 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     useEffect(() => {
         if(roomId && messages.length > 0) {
             if(String(messages[0].roomId) === String(roomId)) {
-                globalMessagesCache[roomId] = messages;
+                globalMessagesCache[roomId] = {
+                    messages: messages,
+                    hasMore: hasMore
+                };
             }
         }
-    }, [messages, roomId]);
+    }, [messages, roomId, hasMore]);
 
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -102,8 +112,14 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages])
+        if (shouldScrollToBottomRef.current && !isLoadingMessages) {
+            setTimeout(() => {
+                scrollToBottom();
+            }, 50);
+            
+            shouldScrollToBottomRef.current = false; 
+        }
+    }, [messages, isLoadingMessages]);
 
     const storedData = localStorage.getItem("userData");
     const myMail = storedData ? JSON.parse(storedData).email : null;
@@ -124,17 +140,26 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showEmojiPicker]);
 
+    // FETCH HISTORY BY ROOM ID
     useEffect(() => {
         if(!roomId) return;
 
+        let isCurrentRoom = true;
+
         const fetchMessageHistory = async () => {
             try {
-                if (globalMessagesCache[roomId]) {
-                    setMessages(globalMessagesCache[roomId]);
+               const isCached = !!globalMessagesCache[roomId];
+
+                if (isCached) {
+                    setMessages(globalMessagesCache[roomId].messages);
+                    setHasMore(globalMessagesCache[roomId].hasMore);
                     setIsLoadingMessages(false);
+                    shouldScrollToBottomRef.current = true;
                 } else {
                     setMessages([]);
                     setIsLoadingMessages(true);
+                    setHasMore(true); 
+                    shouldScrollToBottomRef.current = true;
                 }
 
                 const res = await fetch(`${API_URL}/api/messages/${roomId}`, {
@@ -147,26 +172,52 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                 if(res.ok) {
                     const history = await res.json();
 
-                    if (JSON.stringify(history) !== JSON.stringify(globalMessagesCache[roomId])) {
+                    if(!isCurrentRoom) return;
+
+                    if(!isCached) {
+                        if(history.length < 50) setHasMore(false);
+                        else setHasMore(true);
+
                         setMessages(history);
-                        globalMessagesCache[roomId] = history;
+                    }
+                    else {
+                        setMessages(prev => {
+                            const prevIds = new Set(prev.map(m => m.id));
+                            const missingMessages = history.filter(m => !prevIds.has(m.id));
+
+                            if(missingMessages.length > 0) {
+                                shouldScrollToBottomRef.current = true;
+                                return [...prev, ...missingMessages];
+                            }
+
+                            return prev;
+                        })
                     }
                 }
             } catch(err) {
-                console.error("Fetch error: ", err);
-                setErrors("Failed to load page data.");
+                if (isCurrentRoom) {
+                    console.error("Fetch error: ", err);
+                    setErrors("Failed to load page data.");
+                }
             }
             finally {
-                setIsLoadingMessages(false);
+                if (isCurrentRoom) {
+                    setIsLoadingMessages(false);
+                }
             }
         };
 
         fetchMessageHistory();
+
+        return () => {
+            isCurrentRoom = false;
+        };
     }, [roomId, token]);
 
     useEffect(() => {
         const handleIncomingMessage = (msg) => {
             if (msg.roomId !== roomId) return; 
+            shouldScrollToBottomRef.current = true;
 
             setMessages((prev) => {
                 if (msg.id && prev.some(existingMsg => existingMsg.id === msg.id)) {
@@ -455,6 +506,8 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             replyTo: replyToMsg ? { id: replyToMsg.id, text: replyToMsg.text, fullname: replyToMsg.fullname } : null
         }
 
+        shouldScrollToBottomRef.current = true;
+
         setMessages((prev) => [...prev, optimisticMsg]);
 
         let finalImageUrl = null;
@@ -494,6 +547,57 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
 
         setReplyToMsg(null);
     }
+
+    const loadMoreMessages = async () => {
+        if (isLoadingMore || !hasMore || messages.length === 0) return;
+        
+        setIsLoadingMore(true);
+        const oldestMsgId = messages[0].id;
+        
+        try {
+            const res = await fetch(`/api/messages/${roomId}?cursor=${oldestMsgId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                const olderMessages = await res.json();
+                if (olderMessages.length < 50) setHasMore(false);
+                
+                // Capture the exact height right before we update the state
+                const container = chatContainerRef.current;
+                previousScrollHeightRef.current = container?.scrollHeight || 0;
+                
+                // Tell LayoutEffect to prepend the history
+                isPrependingRef.current = true;
+                shouldScrollToBottomRef.current = false; 
+                
+                setIsLoadingMore(false);
+                setMessages(prev => [...olderMessages, ...prev]);
+            } else {
+                setIsLoadingMore(false);
+            }
+        } catch (err) {
+            console.error("Failed to load older messages", err);
+            setIsLoadingMore(false);
+        }
+    };
+
+    useLayoutEffect(() => {
+        if (isPrependingRef.current && chatContainerRef.current) {
+            const container = chatContainerRef.current;
+            
+            // Adjust the scrollbar by the exact height of the newly rendered messages
+            container.scrollTop = container.scrollHeight - previousScrollHeightRef.current;
+            
+            isPrependingRef.current = false;
+        }
+    }, [messages]);
+
+    const handleScroll = (e) => {
+        if (e.target.scrollTop === 0) {
+            loadMoreMessages();
+        }
+    };
 
     const onEmojiClick = (emojiObject) => {
         setInputText((prevInput) => prevInput + emojiObject.emoji);
@@ -549,7 +653,18 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
             </div>
 
             {/* Chat Section  */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 min-h-0">
+            <div 
+                className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 min-h-0"
+                ref={chatContainerRef}
+                onScroll={handleScroll}
+            >
+
+                {isLoadingMore && (
+                    <div className="w-full flex justify-center py-2 animate-in fade-in duration-200">
+                        <TailSpin visible={true} height="20" width="20" color="#8444f6" radius="1" />
+                    </div>
+                )}
+                
                 {/* Loading Skeleton  */}
                 {isLoadingMessages ? (
                     <div className="flex flex-col w-full gap-6 py-4">
