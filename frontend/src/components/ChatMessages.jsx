@@ -551,11 +551,12 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const loadMoreMessages = async () => {
         if (isLoadingMore || !hasMore || messages.length === 0) return;
         
+        isFetchingRef.current = true;
         setIsLoadingMore(true);
         const oldestMsgId = messages[0].id;
         
         try {
-            const res = await fetch(`/api/messages/${roomId}?cursor=${oldestMsgId}`, {
+            const res = await fetch(`${API_URL}/api/messages/${roomId}?cursor=${oldestMsgId}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             
@@ -594,7 +595,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     }, [messages]);
 
     const handleScroll = (e) => {
-        if (e.target.scrollTop <= 10) {
+        if (e.target.scrollTop === 0) {
             loadMoreMessages();
         }
     };
