@@ -594,7 +594,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     }, [messages]);
 
     const handleScroll = (e) => {
-        if (e.target.scrollTop === 0) {
+        if (e.target.scrollTop <= 10) {
             loadMoreMessages();
         }
     };
