@@ -664,7 +664,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                         <TailSpin visible={true} height="20" width="20" color="#8444f6" radius="1" />
                     </div>
                 )}
-                
+
                 {/* Loading Skeleton  */}
                 {isLoadingMessages ? (
                     <div className="flex flex-col w-full gap-6 py-4">
@@ -784,7 +784,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                     )}
                                                 </div>
                                                 
-                                                <div className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}>
+                                                <div className={`flex flex-col min-w-0 ${isMyMessage ? 'items-end' : 'items-start'}`}>
                                                     
                                                     {/* Name & Time */}
                                                     {isFirstInGroup && (
@@ -796,7 +796,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                         </div>
                                                     )}
                                                     
-                                                    <div className={`px-4 py-2 w-fit relative ${
+                                                    <div className={`px-4 py-2 w-fit max-w-full relative ${
                                                         msg.isDeleted ? 'bg-transparent border border-[#2c2c2f] text-[#8f8f96]'
                                                         : isMyMessage 
                                                             ? 'bg-[#8444f6] text-white' 
@@ -813,11 +813,13 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                                     const el = document.getElementById(`message-${msg.replyTo.id}`);
                                                                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                                                 }}
-                                                                className={`mb-2 mt-1 px-3 py-1.5 rounded-lg text-[12px] cursor-pointer border-l-2 transition-colors ${
+                                                                className={`mb-2 mt-1 px-3 py-1.5 rounded-lg text-[12px] cursor-pointer border-l-2 transition-colors overflow-hidden max-w-full ${
                                                                 isMyMessage ? 'bg-white/10 border-white/40 hover:bg-white/20 text-white/80' : 'bg-[#2c2c2f] border-[#8444f6] hover:bg-[#3a3a3e] text-[#8f8f96]'
                                                             }`}>
                                                                 <span className="font-bold opacity-100">{msg.replyTo.fullname}</span>
-                                                                <p className="truncate opacity-80">{msg.replyTo.text}</p>
+                                                                <p className="line-clamp-2 opacity-80 break-words whitespace-pre-wrap overflow-hidden text-ellipsis">
+                                                                    {msg.replyTo.text}
+                                                                </p>
                                                             </div>
                                                         )}
 
@@ -838,7 +840,7 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
                                                                 )}
 
                                                                 {msg.text && (
-                                                                    <p className="text-[14px] break-words break-all whitespace-pre-wrap">
+                                                                    <p className="text-[14px] break-words whitespace-pre-wrap">
                                                                         {renderMessageText(msg.text, searchQuery)} 
                                                                         {msg.isEdited && <span className="text-[10px] ml-1.5 opacity-50 italic">(edited)</span>}
                                                                     </p>
