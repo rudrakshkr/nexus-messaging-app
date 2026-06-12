@@ -551,7 +551,6 @@ export default function ChatMessages({ activeRoom, setActiveRoom, setRooms, room
     const loadMoreMessages = async () => {
         if (isLoadingMore || !hasMore || messages.length === 0) return;
         
-        isFetchingRef.current = true;
         setIsLoadingMore(true);
         const oldestMsgId = messages[0].id;
         
